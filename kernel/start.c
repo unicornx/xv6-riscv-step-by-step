@@ -29,6 +29,7 @@ start()
   // delegate all interrupts and exceptions to supervisor mode.
   w_medeleg(0xffff);
   w_mideleg(0xffff);
+  w_sie(r_sie() | SIE_SEIE);
 
   // configure Physical Memory Protection to give supervisor mode
   // access to all of physical memory.

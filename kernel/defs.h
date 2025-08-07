@@ -39,7 +39,14 @@ void            trapinithart(void);
 
 // uart.c
 void            uartinit(void);
+void            uartintr(void);
 void            uartputc_sync(int);
+
+// plic.c
+void            plicinit(void);
+void            plicinithart(void);
+int             plic_claim(void);
+void            plic_complete(int);
 
 // user.c
 void            user_task0(void);

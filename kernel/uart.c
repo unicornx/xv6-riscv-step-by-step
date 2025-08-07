@@ -56,6 +56,9 @@ uartinit(void)
 
   // reset and enable FIFOs.
   WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
+
+  // enable receive interrupts.
+  WriteReg(IER, IER_RX_ENABLE);
 }
 
 
@@ -70,4 +73,35 @@ uartputc_sync(int c)
   while((ReadReg(LSR) & LSR_TX_IDLE) == 0)
     ;
   WriteReg(THR, c);
+}
+
+// try to read one input character from the UART.
+// return -1 if none is waiting.
+int
+uartgetc(void)
+{
+  if(ReadReg(LSR) & LSR_RX_READY){
+    // input data is ready.
+    return ReadReg(RHR);
+  } else {
+    return -1;
+  }
+}
+
+// handle a uart interrupt, raised because input has
+// arrived, or the uart is ready for more output, or
+// both. called from devintr().
+void
+uartintr(void)
+{
+  ReadReg(ISR); // acknowledge the interrupt
+
+  // read and process incoming characters, if any.
+  while(1){
+    int c = uartgetc();
+    if(c == -1)
+      break;
+    uartputc_sync(c);
+    uartputc_sync('\n'); // add a newline after echoing input character
+  }
 }

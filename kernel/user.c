@@ -16,13 +16,6 @@ void user_task0(void)
   printf("Task 0: Created!\n");
   while (1) {
     printf("Task 0: Running...\n");
-
-    /*
-     * Synchronous exception code = 7
-     * Store/AMO access fault
-     */
-    *(int *)0xFFFFFFFF = 100;
-
     task_delay(DELAY);
     yield();
   }
