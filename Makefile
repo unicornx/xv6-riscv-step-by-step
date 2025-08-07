@@ -3,6 +3,8 @@ K=kernel
 OBJS = \
   $K/entry.o \
   $K/start.o \
+  $K/printf.o \
+  $K/uart.o \
   $K/main.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
