@@ -35,4 +35,5 @@ struct proc {
 
   uint64 kstack;               // Physical address of kernel stack
   struct context context;      // swtch() here to run process
+  void (*start)(void);         // Function to run when process starts
 };

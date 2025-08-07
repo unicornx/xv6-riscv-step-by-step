@@ -11,6 +11,8 @@
 #include "defs.h"
 #include "proc.h"
 
+volatile int panicked = 0; // spinning forever at end of a panic
+
 static char digits[] = "0123456789abcdef";
 
 static void
@@ -120,6 +122,7 @@ panic(char *s)
 {
   printf("panic: ");
   printf("%s\n", s);
+  panicked = 1; // freeze uart output from other tasks
   for(;;)
     ;
 }
