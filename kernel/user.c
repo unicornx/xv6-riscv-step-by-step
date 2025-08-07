@@ -17,5 +17,16 @@ void user_task0(void)
   while (1) {
     printf("Task 0: Running...\n");
     task_delay(DELAY);
+    yield();
+  }
+}
+
+void user_task1(void)
+{
+  printf("Task 1: Created!\n");
+  while (1) {
+    printf("Task 1: Running...\n");
+    task_delay(DELAY);
+    yield();
   }
 }
