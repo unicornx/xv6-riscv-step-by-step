@@ -35,6 +35,8 @@
 #define LSR_RX_READY (1<<0)   // input is waiting to be read from RHR
 #define LSR_TX_IDLE (1<<5)    // THR can accept another character to send
 
+extern volatile int panicked; // from printf.c
+
 void
 uartinit(void)
 {
@@ -69,6 +71,11 @@ uartinit(void)
 void
 uartputc_sync(int c)
 {
+  if(panicked){
+    for(;;)
+      ;
+  }
+
   // wait for UART to set Transmit Holding Empty in LSR.
   while((ReadReg(LSR) & LSR_TX_IDLE) == 0)
     ;
