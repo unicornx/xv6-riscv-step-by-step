@@ -42,6 +42,18 @@ kerneltrap()
     printf("scause=0x%lx sepc=0x%lx stval=0x%lx\n", scause, r_sepc(), r_stval());
     panic("kerneltrap");
   }
+
+  if(which_dev == 2 && myproc() != 0)
+    printf("--> timer interrupt\n");
+}
+
+void
+clockintr()
+{
+  // ask for the next timer interrupt. this also clears
+  // the interrupt request. 1000000 is about a tenth
+  // of a second.
+  w_stimecmp(r_time() + 1000000);
 }
 
 // check if it's an external interrupt or software interrupt,
@@ -73,7 +85,12 @@ devintr()
       plic_complete(irq);
 
     return 1;
+  } else if(scause == 0x8000000000000005L){
+    // timer interrupt.
+    clockintr();
+    return 2;
   } else {
     return 0;
   }
 }
+
