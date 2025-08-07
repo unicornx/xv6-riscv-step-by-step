@@ -118,6 +118,9 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
 
+  // Enable interrupts on this processor.
+  intr_on();
+
   c->proc = 0;
   for(;;){
     for(p = proc; p < &proc[NPROC]; p++) {
