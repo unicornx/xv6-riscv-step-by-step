@@ -5,6 +5,8 @@ OBJS = \
   $K/start.o \
   $K/printf.o \
   $K/uart.o \
+  $K/kalloc.o \
+  $K/string.o \
   $K/main.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
