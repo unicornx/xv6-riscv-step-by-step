@@ -10,6 +10,8 @@ OBJS = \
   $K/main.o \
   $K/proc.o \
   $K/swtch.o \
+  $K/trap.o \
+  $K/kernelvec.o \
   $K/user.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
