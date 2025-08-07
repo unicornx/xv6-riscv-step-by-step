@@ -33,6 +33,10 @@ int             strlen(const char*);
 int             strncmp(const char*, const char*, uint);
 char*           strncpy(char*, const char*, int);
 
+// trap.c
+void            trapinit(void);
+void            trapinithart(void);
+
 // uart.c
 void            uartinit(void);
 void            uartputc_sync(int);

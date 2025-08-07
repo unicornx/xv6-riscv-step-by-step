@@ -15,6 +15,8 @@ main()
   printf("\n");
   kinit();         // physical page allocator
   procinit();      // process table
+  trapinit();      // trap vectors
+  trapinithart();  // install kernel trap vector
   userinit();      // first user process
 
   scheduler();        
