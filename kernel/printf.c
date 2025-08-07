@@ -9,6 +9,7 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "defs.h"
+#include "proc.h"
 
 static char digits[] = "0123456789abcdef";
 
