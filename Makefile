@@ -8,6 +8,9 @@ OBJS = \
   $K/kalloc.o \
   $K/string.o \
   $K/main.o \
+  $K/proc.o \
+  $K/swtch.o \
+  $K/user.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
