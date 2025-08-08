@@ -37,6 +37,10 @@
 #define LSR_RX_READY (1<<0)   // input is waiting to be read from RHR
 #define LSR_TX_IDLE (1<<5)    // THR can accept another character to send
 
+// for sending threads to synchronize with uart "ready" interrupts.
+static struct spinlock tx_lock;
+static int tx_busy;           // is the UART busy sending?
+
 extern volatile int panicking; // from printf.c
 extern volatile int panicked; // from printf.c
 
@@ -62,8 +66,36 @@ uartinit(void)
   // reset and enable FIFOs.
   WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
-  // enable receive interrupts.
-  WriteReg(IER, IER_RX_ENABLE);
+  // enable transmit and receive interrupts.
+  WriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
+
+  initlock(&tx_lock, "uart");
+}
+
+// transmit buf[] to the uart. it blocks if the
+// uart is busy, so it cannot be called from
+// interrupts, only from write() system calls.
+void
+uartwrite(char buf[], int n)
+{
+  acquire(&tx_lock);
+
+  int i = 0;
+  while(i < n){ 
+    release(&tx_lock);
+    while(tx_busy != 0){
+      // wait for a UART transmit-complete interrupt
+      // to set tx_busy to 0.
+      asm volatile ("" : : : "memory"); // Preventing possible optimizations
+    }
+    acquire(&tx_lock);
+
+    WriteReg(THR, buf[i]);
+    i += 1;
+    tx_busy = 1;
+  }
+
+  release(&tx_lock);
 }
 
 
@@ -112,12 +144,18 @@ uartintr(void)
 {
   ReadReg(ISR); // acknowledge the interrupt
 
+  acquire(&tx_lock);
+  if(ReadReg(LSR) & LSR_TX_IDLE){
+    // UART finished transmitting; wake up sending thread.
+    tx_busy = 0;
+  }
+  release(&tx_lock);
+
   // read and process incoming characters, if any.
   while(1){
     int c = uartgetc();
     if(c == -1)
       break;
-    uartputc_sync(c);
-    uartputc_sync('\n'); // add a newline after echoing input character
+    consoleintr(c);
   }
 }

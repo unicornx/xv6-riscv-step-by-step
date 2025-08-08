@@ -117,12 +117,21 @@ userinit(void)
   p = allocproc(user_task0);
   if (p == 0)
     panic("userinit: allocproc task0 failed");
+  safestrcpy(p->name, "task0", 6);
   p->state = RUNNABLE;
   release(&p->lock);
 
   p = allocproc(user_task1);
   if (p == 0)
     panic("userinit: allocproc task1 failed");
+  safestrcpy(p->name, "task1", 6);
+  p->state = RUNNABLE;
+  release(&p->lock);
+
+  p = allocproc(user_shell);
+  if (p == 0)
+    panic("userinit: allocproc task0 failed");
+  safestrcpy(p->name, "shell", 6);
   p->state = RUNNABLE;
   release(&p->lock);
 }
@@ -217,4 +226,34 @@ kerneltrapret(void)
   w_sepc((uint64)p->start);
 
   asm volatile("sret");
+}
+
+// Print a process listing to console.  For debugging.
+// Runs when user types ^P on console.
+// No lock to avoid wedging a stuck machine further.
+void
+procdump(void)
+{
+  static char *states[] = {
+  [UNUSED]    "unused",
+  [USED]      "used",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
+  };
+  struct proc *p;
+  char *state;
+
+  printf("\n");
+  for(p = proc; p < &proc[NPROC]; p++){
+    if(p->state == UNUSED)
+      continue;
+    if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+      state = states[p->state];
+    else
+      state = "???";
+    printf("%d %s %s", p->pid, state, p->name);
+    printf("\n");
+  }
 }

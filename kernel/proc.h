@@ -41,5 +41,6 @@ struct proc {
   // these are private to the process, so p->lock need not be held.
   uint64 kstack;               // Physical address of kernel stack
   struct context context;      // swtch() here to run process
+  char name[16];               // Process name (debugging)
   void (*start)(void);         // Function to run when process starts
 };

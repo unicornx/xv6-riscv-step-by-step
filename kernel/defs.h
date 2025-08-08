@@ -2,6 +2,11 @@ struct context;
 struct proc;
 struct spinlock;
 
+// console.c
+void            consoleinit(void);
+void            consoleintr(int);
+void            consputc(int);
+
 // kalloc.c
 void*           kalloc(void);
 void            kfree(void *);
@@ -21,6 +26,7 @@ void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
 void            userinit(void);
 void            yield(void);
+void            procdump(void);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -49,7 +55,9 @@ void            trapinithart(void);
 // uart.c
 void            uartinit(void);
 void            uartintr(void);
+void            uartwrite(char [], int);
 void            uartputc_sync(int);
+int             uartgetc(void);
 
 // plic.c
 void            plicinit(void);
@@ -60,3 +68,7 @@ void            plic_complete(int);
 // user.c
 void            user_task0(void);
 void            user_task1(void);
+void            user_shell(void);
+
+// number of elements in fixed-size array
+#define NELEM(x) (sizeof(x)/sizeof((x)[0]))
