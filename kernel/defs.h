@@ -19,6 +19,7 @@ void            printfinit(void);
 
 // proc.c
 int             cpuid(void);
+void            proc_mapstacks(pagetable_t);
 struct cpu*     mycpu(void);
 struct proc*    myproc();
 void            procinit(void);
@@ -58,6 +59,13 @@ void            uartintr(void);
 void            uartwrite(char [], int);
 void            uartputc_sync(int);
 int             uartgetc(void);
+
+// vm.c
+void            kvminit(void);
+void            kvminithart(void);
+void            kvmmap(pagetable_t, uint64, uint64, uint64, int);
+int             mappages(pagetable_t, uint64, uint64, uint64, int);
+pte_t *         walk(pagetable_t, uint64, int);
 
 // plic.c
 void            plicinit(void);
