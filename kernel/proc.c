@@ -158,6 +158,7 @@ freeproc(struct proc *p)
   p->pid = 0;
   p->name[0] = 0;
   p->chan = 0;
+  p->xstate = 0;
   p->state = UNUSED;
 }
 
@@ -252,6 +253,24 @@ userinit(void)
   p->state = RUNNABLE;
 
   release(&p->lock);
+}
+
+// Exit the current process.  Does not return.
+// An exited process remains in the zombie state
+// until its parent calls wait().
+void
+kexit(int status)
+{
+  struct proc *p = myproc();
+
+  acquire(&p->lock);
+
+  p->xstate = status;
+  p->state = ZOMBIE;
+
+  // Jump into the scheduler, never to return.
+  sched();
+  panic("zombie exit");
 }
 
 // Per-CPU process scheduler.

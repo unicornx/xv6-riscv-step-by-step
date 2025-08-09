@@ -2,6 +2,14 @@
 #include "kernel/riscv.h"
 #include "user/user.h"
 
+int
+strcmp(const char *p, const char *q)
+{
+  while(*p && *p == *q)
+    p++, q++;
+  return (uchar)*p - (uchar)*q;
+}
+
 uint
 strlen(const char *s)
 {

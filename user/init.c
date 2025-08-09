@@ -6,7 +6,11 @@
 void
 runcmd(char *cmd)
 {
-  printf("Running command: \'%s\', unsupported!\n", cmd);
+  if(strcmp(cmd, "exit") == 0) {
+    printf("Exiting shell...\n");
+    exit(0);
+  } else
+    printf("Running command: \'%s\', unsupported!\n", cmd);
 }
 
 int

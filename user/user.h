@@ -1,4 +1,5 @@
 // system calls
+int exit(int) __attribute__((noreturn));
 int write(int, const void*, int);
 int read(int, void*, int);
 int getpid(void);
@@ -6,6 +7,7 @@ int pause(int);
 int uptime(void);
 
 // ulib.c
+int strcmp(const char*, const char*);
 char* gets(char*, int max);
 uint strlen(const char*);
 void* memset(void*, int, uint);
