@@ -1,5 +1,6 @@
 // system calls
 int write(int, const void*, int);
+int getpid(void);
 
 // printf.c
 void fprintf(int, const char*, ...) __attribute__ ((format (printf, 2, 3)));

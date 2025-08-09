@@ -46,11 +46,13 @@ argaddr(int n, uint64 *ip)
 }
 
 // Prototypes for the functions that handle system calls.
+extern uint64 sys_getpid(void);
 extern uint64 sys_write(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
 static uint64 (*syscalls[])(void) = {
+[SYS_getpid]  sys_getpid,
 [SYS_write]   sys_write,
 };
 

@@ -17,6 +17,7 @@ OBJS = \
   $K/trampoline.o \
   $K/trap.o \
   $K/syscall.o \
+  $K/sysproc.o \
   $K/sysfile.o \
   $K/kernelvec.o \
   $K/plic.o \
