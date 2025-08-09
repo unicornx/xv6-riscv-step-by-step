@@ -28,6 +28,14 @@ sys_fork(void)
 }
 
 uint64
+sys_wait(void)
+{
+  uint64 p;
+  argaddr(0, &p);
+  return kwait(p);
+}
+
+uint64
 sys_pause(void)
 {
   int n;

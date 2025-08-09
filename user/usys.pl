@@ -17,6 +17,7 @@ sub entry {
 	
 entry("fork");
 entry("exit");
+entry("wait");
 entry("read");
 entry("write");
 entry("exec");
