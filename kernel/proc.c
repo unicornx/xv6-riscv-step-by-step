@@ -20,6 +20,12 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
+// helps ensure that wakeups of wait()ing
+// parents are not lost. helps obey the
+// memory model when using p->parent.
+// must be acquired before any p->lock.
+struct spinlock wait_lock;
+
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
 // guard page.
@@ -44,6 +50,7 @@ procinit(void)
   struct proc *p;
   
   initlock(&pid_lock, "nextpid");
+  initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->state = UNUSED;
@@ -255,13 +262,30 @@ kfork(void)
 
   release(&np->lock);
 
+  acquire(&wait_lock);
   np->parent = p;
+  release(&wait_lock);
 
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
 
   return pid;
+}
+
+// Pass p's abandoned children to init.
+// Caller must hold wait_lock.
+void
+reparent(struct proc *p)
+{
+  struct proc *pp;
+
+  for(pp = proc; pp < &proc[NPROC]; pp++){
+    if(pp->parent == p){
+      pp->parent = initproc;
+      wakeup(initproc);
+    }
+  }
 }
 
 // Exit the current process.  Does not return.
@@ -275,14 +299,73 @@ kexit(int status)
   if(p == initproc)
     panic("init exiting");
 
+  acquire(&wait_lock);
+
+  // Give any children to init.
+  reparent(p);
+
+  // Parent might be sleeping in wait().
+  wakeup(p->parent);
+  
   acquire(&p->lock);
 
   p->xstate = status;
   p->state = ZOMBIE;
 
+  release(&wait_lock);
+
   // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");
+}
+
+// Wait for a child process to exit and return its pid.
+// Return -1 if this process has no children.
+int
+kwait(uint64 addr)
+{
+  struct proc *pp;
+  int havekids, pid;
+  struct proc *p = myproc();
+
+  acquire(&wait_lock);
+
+  for(;;){
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for(pp = proc; pp < &proc[NPROC]; pp++){
+      if(pp->parent == p){
+        // make sure the child isn't still in exit() or swtch().
+        acquire(&pp->lock);
+
+        havekids = 1;
+        if(pp->state == ZOMBIE){
+          // Found one.
+          pid = pp->pid;
+          if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
+                                  sizeof(pp->xstate)) < 0) {
+            release(&pp->lock);
+            release(&wait_lock);
+            return -1;
+          }
+          freeproc(pp);
+          release(&pp->lock);
+          release(&wait_lock);
+          return pid;
+        }
+        release(&pp->lock);
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids){
+      release(&wait_lock);
+      return -1;
+    }
+    
+    // Wait for a child to exit.
+    sleep(p, &wait_lock);  //DOC: wait-sleep
+  }
 }
 
 // Per-CPU process scheduler.

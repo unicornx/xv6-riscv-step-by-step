@@ -9,7 +9,7 @@ char *argv[] = { "sh", 0 };
 int
 main(void)
 {
-  int pid;
+  int pid, wpid;
   for(;;){
     printf("init: starting sh\n");
     pid = fork();
@@ -22,8 +22,21 @@ main(void)
       printf("init: exec sh failed\n");
       exit(1);
     }
-    // We have not supported wait in this version,
-    // so we just wait indefinitely.
-    while(1);
+
+    for(;;){
+      // this call to wait() returns if the shell exits,
+      // or if a parentless process exits.
+      wpid = wait((int *) 0);
+      printf("init: wait returned successfully, process[%d] exited\n", wpid);
+      if(wpid == pid){
+        // the shell exited; restart it.
+        break;
+      } else if(wpid < 0){
+        printf("init: wait returned an error\n");
+        exit(1);
+      } else {
+        // it was a parentless process; do nothing.
+      }
+    }
   }
 }
