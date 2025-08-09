@@ -100,6 +100,9 @@ $U/initcode: $U/start.o $U/init.o $U/usys.o $U/printf.o
 	$(OBJCOPY) -S -O binary $U/initcode.out $U/initcode
 	$(OBJDUMP) -S $U/initcode.out > $U/initcode.asm
 
+$U/usys.S : $U/usys.pl
+	perl $U/usys.pl > $U/usys.S
+
 $U/usys.o : $U/usys.S
 	$(CC) $(CFLAGS) -c -o $U/usys.o $U/usys.S
 
@@ -110,6 +113,7 @@ clean:
 	*/*.o */*.d */*.asm */*.sym \
 	$U/initcode $U/initcode.out $K/kernel \
 	.gdbinit \
+	$U/usys.S \
 	$K/initcode.c
 
 # try to generate a unique GDB port
