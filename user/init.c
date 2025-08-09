@@ -1,50 +1,29 @@
-// Shell.
+// init: The initial user-level program
 
 #include "kernel/types.h"
+#include "kernel/spinlock.h"
 #include "user/user.h"
 
-void
-runcmd(char *cmd)
-{
-  if(strcmp(cmd, "exit") == 0) {
-    printf("Exiting shell...\n");
-    exit(0);
-  } else
-    printf("Running command: \'%s\', unsupported!\n", cmd);
-}
+char *argv[] = { "sh", 0 };
 
 int
-getcmd(char *buf, int nbuf)
+main(void)
 {
-  write(2, "$ ", 2);
-  memset(buf, 0, nbuf);
-  gets(buf, nbuf);
-  if(buf[0] == 0) // EOF
-    return -1;
-  return 0;
-}
-
-int
-main(int argc, char *argv[])
-{
-  static char buf[100];
-  int i;
-
-  printf("init: argc = %d\n", argc);
-  for(i = 0; i < argc; i++){
-    printf("init: argv[%d] is: %s\n", i, argv[i]);
+  int pid;
+  for(;;){
+    printf("init: starting sh\n");
+    pid = fork();
+    if(pid < 0){
+      printf("init: fork failed\n");
+      exit(1);
+    }
+    if(pid == 0){
+      exec("sh", argv);
+      printf("init: exec sh failed\n");
+      exit(1);
+    }
+    // We have not supported wait in this version,
+    // so we just wait indefinitely.
+    while(1);
   }
-
-  // Read and run input commands.
-  while(getcmd(buf, sizeof(buf)) >= 0){
-    char *cmd = buf;
-    while (*cmd == ' ' || *cmd == '\t')
-      cmd++;
-    if (*cmd == '\n') // is a blank command
-      continue;
-    cmd[strlen(cmd) - 1] = '\0';
-    runcmd(cmd);
-  }
-
-  return 0;
 }

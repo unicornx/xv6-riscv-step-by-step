@@ -156,6 +156,7 @@ freeproc(struct proc *p)
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
+  p->parent = 0;
   p->name[0] = 0;
   p->chan = 0;
   p->xstate = 0;
@@ -220,6 +221,49 @@ userinit(void)
   release(&p->lock);
 }
 
+// Create a new process, copying the parent.
+// Sets up child kernel stack to return as if from fork() system call.
+int
+kfork(void)
+{
+  int pid;
+  struct proc *np;
+  struct proc *p = myproc();
+
+  // Allocate process.
+  if((np = allocproc()) == 0){
+    return -1;
+  }
+
+  // Copy user memory from parent to child.
+  if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
+    freeproc(np);
+    release(&np->lock);
+    return -1;
+  }
+  np->sz = p->sz;
+
+  // copy saved user registers.
+  *(np->trapframe) = *(p->trapframe);
+
+  // Cause fork to return 0 in the child.
+  np->trapframe->a0 = 0;
+
+  safestrcpy(np->name, p->name, sizeof(p->name));
+
+  pid = np->pid;
+
+  release(&np->lock);
+
+  np->parent = p;
+
+  acquire(&np->lock);
+  np->state = RUNNABLE;
+  release(&np->lock);
+
+  return pid;
+}
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait().
@@ -227,6 +271,9 @@ void
 kexit(int status)
 {
   struct proc *p = myproc();
+
+  if(p == initproc)
+    panic("init exiting");
 
   acquire(&p->lock);
 
@@ -460,7 +507,10 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printf("%d %s %s", p->pid, state, p->name);
+    if (p->parent)
+      printf("%d %d %s %s", p->pid, p->parent->pid, state, p->name);
+    else
+      printf("%d x %s %s", p->pid, state, p->name);
     printf("\n");
   }
 }

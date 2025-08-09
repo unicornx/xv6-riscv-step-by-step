@@ -22,6 +22,12 @@ sys_getpid(void)
 }
 
 uint64
+sys_fork(void)
+{
+  return kfork();
+}
+
+uint64
 sys_pause(void)
 {
   int n;
