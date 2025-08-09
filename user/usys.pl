@@ -16,3 +16,4 @@ sub entry {
 }
 	
 entry("write");
+entry("getpid");
