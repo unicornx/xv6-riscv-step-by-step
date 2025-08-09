@@ -21,6 +21,7 @@ int flags2perm(int flags)
 }
 
 extern uchar program__init[]; // The program to run at init
+extern uchar program__sh[];   // The shell.
 
 //
 // the implementation of the exec() system call
@@ -41,6 +42,8 @@ kexec(char *path, char **argv)
   // Open the executable file.
   if (strncmp(path, "init", 5) == 0) {
     program = program__init;
+  } else if (strncmp(path, "sh", 2) == 0) {
+    program = program__sh;
   } else
     goto bad;
 

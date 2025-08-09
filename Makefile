@@ -23,6 +23,7 @@ OBJS = \
   $K/kernelvec.o \
   $K/plic.o \
   $K/_init.o \
+  $K/_sh.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -80,7 +81,7 @@ endif
 
 LDFLAGS = -z max-page-size=4096
 
-$K/kernel: $U/_init $(OBJS) $K/kernel.ld
+$K/kernel: $U/_init $U/_sh $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
@@ -93,6 +94,8 @@ tags: $(OBJS)
 
 $K/_init.o: $K/_init.c
 	$(CC) $(CFLAGS) -c -o $K/_init.o $K/_init.c
+$K/_sh.o: $K/_sh.c
+	$(CC) $(CFLAGS) -c -o $K/_sh.o $K/_sh.c
 
 ULIB = $U/ulib.o $U/usys.o $U/printf.o
 
@@ -117,6 +120,7 @@ $U/usys.o : $U/usys.S
 
 UPROGS=\
 	$U/_init\
+	$U/_sh \
 
 -include kernel/*.d user/*.d
 
