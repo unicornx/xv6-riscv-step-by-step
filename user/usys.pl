@@ -20,6 +20,7 @@ entry("exit");
 entry("wait");
 entry("read");
 entry("write");
+entry("kill");
 entry("exec");
 entry("getpid");
 entry("pause");

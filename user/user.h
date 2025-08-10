@@ -4,6 +4,7 @@ int exit(int) __attribute__((noreturn));
 int wait(int*);
 int write(int, const void*, int);
 int read(int, void*, int);
+int kill(int);
 int exec(const char*, char**);
 int getpid(void);
 int pause(int);

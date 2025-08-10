@@ -47,10 +47,23 @@ sys_pause(void)
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
+    if(killed(myproc())){
+      release(&tickslock);
+      return -1;
+    }
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
   return 0;
+}
+
+uint64
+sys_kill(void)
+{
+  int pid;
+
+  argint(0, &pid);
+  return kkill(pid);
 }
 
 // return how many clock tick interrupts have occurred
