@@ -166,6 +166,7 @@ freeproc(struct proc *p)
   p->parent = 0;
   p->name[0] = 0;
   p->chan = 0;
+  p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
 }
@@ -358,7 +359,7 @@ kwait(uint64 addr)
     }
 
     // No point waiting if we don't have any children.
-    if(!havekids){
+    if(!havekids || killed(p)){
       release(&wait_lock);
       return -1;
     }
@@ -533,6 +534,49 @@ wakeup(void *chan)
       release(&p->lock);
     }
   }
+}
+
+// Kill the process with the given pid.
+// The victim won't exit until it tries to return
+// to user space (see usertrap() in trap.c).
+int
+kkill(int pid)
+{
+  struct proc *p;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->pid == pid){
+      p->killed = 1;
+      if(p->state == SLEEPING){
+        // Wake process from sleep().
+        p->state = RUNNABLE;
+      }
+      release(&p->lock);
+      return 0;
+    }
+    release(&p->lock);
+  }
+  return -1;
+}
+
+void
+setkilled(struct proc *p)
+{
+  acquire(&p->lock);
+  p->killed = 1;
+  release(&p->lock);
+}
+
+int
+killed(struct proc *p)
+{
+  int k;
+  
+  acquire(&p->lock);
+  k = p->killed;
+  release(&p->lock);
+  return k;
 }
 
 // Copy to either a user address, or kernel address,

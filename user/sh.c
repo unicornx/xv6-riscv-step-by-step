@@ -32,6 +32,9 @@ runcmd(char *cmd)
     exit(0);
   } else if(strcmp(cmd, "zombie") == 0){
     cmd_zombie();
+  } else if(strcmp(cmd, "kill") == 0) {
+    printf("Oops, myself is killed...\n");
+    kill(getpid());
   } else
     printf("Running command: \'%s\', unsupported!\n", cmd);
 }
