@@ -113,8 +113,11 @@ $U/usys.o : $U/usys.S
 .PRECIOUS: %.o
 
 UPROGS=\
+	$U/_echo\
 	$U/_init\
-	$U/_sh \
+	$U/_kill\
+	$U/_sh\
+	$U/_zombie\
 
 $K/ramfs.c: ramfs.img
 
