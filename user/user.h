@@ -1,3 +1,5 @@
+#define SBRK_ERROR ((char *)-1)
+
 // system calls
 int fork(void);
 int exit(int) __attribute__((noreturn));
@@ -7,6 +9,7 @@ int read(int, void*, int);
 int kill(int);
 int exec(const char*, char**);
 int getpid(void);
+char* sbrk(int);
 int pause(int);
 int uptime(void);
 
@@ -19,3 +22,7 @@ void* memset(void*, int, uint);
 // printf.c
 void fprintf(int, const char*, ...) __attribute__ ((format (printf, 2, 3)));
 void printf(const char*, ...) __attribute__ ((format (printf, 1, 2)));
+
+// umalloc.c
+void* malloc(uint);
+void free(void*);

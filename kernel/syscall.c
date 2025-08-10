@@ -87,6 +87,7 @@ extern uint64 sys_read(void);
 extern uint64 sys_kill(void);
 extern uint64 sys_exec(void);
 extern uint64 sys_getpid(void);
+extern uint64 sys_sbrk(void);
 extern uint64 sys_pause(void);
 extern uint64 sys_uptime(void);
 extern uint64 sys_write(void);
@@ -101,6 +102,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_kill]    sys_kill,
 [SYS_exec]    sys_exec,
 [SYS_getpid]  sys_getpid,
+[SYS_sbrk]    sys_sbrk,
 [SYS_pause]   sys_pause,
 [SYS_uptime]  sys_uptime,
 [SYS_write]   sys_write,

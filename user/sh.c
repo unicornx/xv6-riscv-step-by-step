@@ -24,6 +24,19 @@ void cmd_zombie(void)
   exit(0);
 }
 
+void cmd_memtest(void)
+{
+  char *buf = malloc(100);
+  if(buf == 0) {
+    printf("Failed to allocate memory for command buffer\n");
+    exit(1);
+  }
+  // Not must-haveto, memory will be freed when the process is destroyed.
+  // But it's a good practice to free allocated memory.
+  free(buf);
+  printf("memtest: PASS!\n");
+}
+
 void
 runcmd(char *cmd)
 {
@@ -35,6 +48,8 @@ runcmd(char *cmd)
   } else if(strcmp(cmd, "kill") == 0) {
     printf("Oops, myself is killed...\n");
     kill(getpid());
+  } else if(strcmp(cmd, "memtest") == 0) {
+    cmd_memtest();
   } else
     printf("Running command: \'%s\', unsupported!\n", cmd);
 }
