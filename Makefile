@@ -22,8 +22,7 @@ OBJS = \
   $K/sysfile.o \
   $K/kernelvec.o \
   $K/plic.o \
-  $K/_init.o \
-  $K/_sh.o \
+  $K/ramfs.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -81,7 +80,7 @@ endif
 
 LDFLAGS = -z max-page-size=4096
 
-$K/kernel: $U/_init $U/_sh $(OBJS) $K/kernel.ld
+$K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
@@ -91,11 +90,6 @@ $K/%.o: $K/%.S
 
 tags: $(OBJS)
 	etags kernel/*.S kernel/*.c
-
-$K/_init.o: $K/_init.c
-	$(CC) $(CFLAGS) -c -o $K/_init.o $K/_init.c
-$K/_sh.o: $K/_sh.c
-	$(CC) $(CFLAGS) -c -o $K/_sh.o $K/_sh.c
 
 ULIB = $U/ulib.o $U/usys.o $U/printf.o $U/umalloc.o
 
@@ -121,6 +115,10 @@ $U/usys.o : $U/usys.S
 UPROGS=\
 	$U/_init\
 	$U/_sh \
+
+$K/ramfs.c: ramfs.img
+
+ramfs.img: $(UPROGS)
 
 -include kernel/*.d user/*.d
 

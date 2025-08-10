@@ -20,8 +20,7 @@ int flags2perm(int flags)
     return perm;
 }
 
-extern uchar program__init[]; // The program to run at init
-extern uchar program__sh[];   // The shell.
+extern uchar *find_program(char *path);
 
 //
 // the implementation of the exec() system call
@@ -37,14 +36,9 @@ kexec(char *path, char **argv)
   pagetable_t pagetable = 0, oldpagetable;
   struct proc *p = myproc();
 
-  uchar *program = 0;
-
   // Open the executable file.
-  if (strncmp(path, "init", 5) == 0) {
-    program = program__init;
-  } else if (strncmp(path, "sh", 2) == 0) {
-    program = program__sh;
-  } else
+  uchar *program = find_program(path);
+  if (program == 0)
     goto bad;
 
   // Read the ELF header.
