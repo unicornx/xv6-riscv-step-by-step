@@ -23,5 +23,6 @@ entry("write");
 entry("kill");
 entry("exec");
 entry("getpid");
+entry("sbrk");
 entry("pause");
 entry("uptime");

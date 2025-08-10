@@ -97,7 +97,7 @@ $K/_init.o: $K/_init.c
 $K/_sh.o: $K/_sh.c
 	$(CC) $(CFLAGS) -c -o $K/_sh.o $K/_sh.c
 
-ULIB = $U/ulib.o $U/usys.o $U/printf.o
+ULIB = $U/ulib.o $U/usys.o $U/printf.o $U/umalloc.o
 
 _%: %.o $(ULIB) $U/user.ld
 	$(LD) $(LDFLAGS) -T $U/user.ld -o $@ $< $(ULIB)
