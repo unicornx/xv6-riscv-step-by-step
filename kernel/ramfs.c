@@ -4,6 +4,9 @@
 
 #include "_init.c"
 #include "_sh.c"
+#include "_kill.c"
+#include "_echo.c"
+#include "_zombie.c"
 
 struct ram_file {
   char *name;
@@ -14,6 +17,9 @@ struct ram_file {
 static const struct ram_file ramfs[] = {
   {"init", 5, program__init},
   {"sh", 2, program__sh},
+  {"kill", 4, program__kill},
+  {"echo", 4, program__echo},
+  {"zombie", 6, program__zombie},
 };
 
 uchar * find_program(char *name)
