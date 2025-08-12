@@ -8,8 +8,10 @@
 #include "riscv.h"
 #include "defs.h"
 #include "param.h"
+#include "stat.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "fs.h"
 
 extern int consoleread(int user_dst, uint64 dst, int n);
 extern int consolewrite(int user_src, uint64 src, int n);

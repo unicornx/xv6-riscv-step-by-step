@@ -106,6 +106,10 @@ $U/usys.S : $U/usys.pl
 $U/usys.o : $U/usys.S
 	$(CC) $(CFLAGS) -c -o $U/usys.o $U/usys.S
 
+mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
+	gcc -Wno-unknown-attributes -I. -o mkfs/mkfs mkfs/mkfs.c
+	gcc -Wno-unknown-attributes -I. -o mkfs/dumpfs mkfs/dumpfs.c
+
 # Prevent deletion of intermediate files, e.g. cat.o, after first build, so
 # that disk image changes after first build are persistent until clean.  More
 # details:
@@ -119,17 +123,18 @@ UPROGS=\
 	$U/_sh\
 	$U/_zombie\
 
-$K/ramfs.c: ramfs.img
+$K/ramfs.c: fs.img
 
-ramfs.img: $(UPROGS)
+fs.img: mkfs/mkfs README $(UPROGS)
+	mkfs/mkfs fs.img README $(UPROGS)
 
 -include kernel/*.d user/*.d
 
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
-	$K/kernel \
-	.gdbinit \
+	$K/kernel fs.img \
+	mkfs/mkfs mkfs/dumpfs .gdbinit \
 	$U/usys.S \
 	$(UPROGS) \
 	$K/_*.c
@@ -146,13 +151,13 @@ endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 
-qemu: check-qemu-version $K/kernel
+qemu: check-qemu-version $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
-qemu-gdb: $K/kernel .gdbinit
+qemu-gdb: $K/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 

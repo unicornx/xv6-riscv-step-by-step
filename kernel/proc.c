@@ -657,10 +657,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    if (p->parent)
-      printf("%d %d %s %s", p->pid, p->parent->pid, state, p->name);
-    else
-      printf("%d x %s %s", p->pid, state, p->name);
+    printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
 }
