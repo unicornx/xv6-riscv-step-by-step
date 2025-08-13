@@ -18,10 +18,13 @@ OBJS = \
   $K/trap.o \
   $K/syscall.o \
   $K/sysproc.o \
+  $K/bio.o \
+  $K/fs.o \
   $K/exec.o \
   $K/sysfile.o \
   $K/kernelvec.o \
   $K/plic.o \
+  $K/virtio_disk.o \
   $K/ramfs.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
@@ -150,6 +153,9 @@ CPUS := 3
 endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
+QEMUOPTS += -global virtio-mmio.force-legacy=false
+QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
+QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 qemu: check-qemu-version $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
