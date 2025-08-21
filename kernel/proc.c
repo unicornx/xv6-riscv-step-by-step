@@ -139,10 +139,16 @@ scheduler(void)
   }
 }
 
-// Switch to scheduler.
+// Switch to scheduler. Saves and restores
+// intena because intena is a property of this
+// kernel thread, not this CPU. It should
+// be proc->intena and proc->noff, but that would
+// break in the few places where a lock is held but
+// there's no process.
 void
 sched(void)
 {
+  int intena;
   struct proc *p = myproc();
 
   if(p->state == RUNNING)
@@ -150,7 +156,9 @@ sched(void)
   if(intr_get())
     panic("sched interruptible");
 
+  intena = mycpu()->intena;
   swtch(&p->context, &mycpu()->context);
+  mycpu()->intena = intena;
 }
 
 // Give up the CPU for one scheduling round.
