@@ -32,9 +32,13 @@ enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
+  struct spinlock lock;
+
+  // p->lock must be held when using these:
   enum procstate state;        // Process state
   int pid;                     // Process ID
 
+  // these are private to the process, so p->lock need not be held.
   uint64 kstack;               // Physical address of kernel stack
   struct context context;      // swtch() here to run process
   void (*start)(void);         // Function to run when process starts

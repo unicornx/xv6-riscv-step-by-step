@@ -23,6 +23,7 @@ procinit(void)
   
   initlock(&pid_lock, "nextpid");
   for(p = proc; p < &proc[NPROC]; p++) {
+      initlock(&p->lock, "proc");
       p->state = UNUSED;
       p->kstack = (uint64)kalloc();
       if(p->kstack == 0)
@@ -30,13 +31,18 @@ procinit(void)
   }
 }
 
+// Must be called with interrupts disabled,
+// to prevent race with process being moved
+// to a different CPU.
 int
 cpuid()
 {
-  return 0;
+  int id = r_tp();
+  return id;
 }
 
 // Return this CPU's cpu struct.
+// Interrupts must be disabled.
 struct cpu*
 mycpu(void)
 {
@@ -49,8 +55,10 @@ mycpu(void)
 struct proc*
 myproc(void)
 {
+  push_off();
   struct cpu *c = mycpu();
   struct proc *p = c->proc;
+  pop_off();
   return p;
 }
 
@@ -77,8 +85,11 @@ allocproc(void (*start_routin)(void))
   struct proc *p;
 
   for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
     if(p->state == UNUSED) {
       goto found;
+    } else {
+      release(&p->lock);
     }
   }
   return 0;
@@ -107,11 +118,13 @@ userinit(void)
   if (p == 0)
     panic("userinit: allocproc task0 failed");
   p->state = RUNNABLE;
+  release(&p->lock);
 
   p = allocproc(user_task1);
   if (p == 0)
     panic("userinit: allocproc task1 failed");
   p->state = RUNNABLE;
+  release(&p->lock);
 }
 
 // Per-CPU process scheduler.
@@ -130,8 +143,11 @@ scheduler(void)
   c->proc = 0;
   for(;;){
     for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
       if(p->state == RUNNABLE) {
-        // Switch to chosen process.
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
@@ -140,11 +156,13 @@ scheduler(void)
         // It should have changed its p->state before coming back.
         c->proc = 0;
       }
+      release(&p->lock);
     }
   }
 }
 
-// Switch to scheduler. Saves and restores
+// Switch to scheduler.  Must hold only p->lock
+// and have changed proc->state. Saves and restores
 // intena because intena is a property of this
 // kernel thread, not this CPU. It should
 // be proc->intena and proc->noff, but that would
@@ -156,6 +174,10 @@ sched(void)
   int intena;
   struct proc *p = myproc();
 
+  if(!holding(&p->lock))
+    panic("sched p->lock");
+  if(mycpu()->noff != 1)
+    panic("sched locks");
   if(p->state == RUNNING)
     panic("sched RUNNING");
   if(intr_get())
@@ -171,8 +193,10 @@ void
 yield(void)
 {
   struct proc *p = myproc();
+  acquire(&p->lock);
   p->state = RUNNABLE;
   sched();
+  release(&p->lock);
 }
 
 // A user task's very first scheduling by scheduler()
@@ -181,6 +205,9 @@ void
 kerneltrapret(void)
 {
   struct proc *p = myproc();
+
+  // Still holding p->lock from scheduler.
+  release(&p->lock);
 
   unsigned long x = r_sstatus();
   x |= SSTATUS_SPP;  // set S Previous Privilege mode to Supervisor.

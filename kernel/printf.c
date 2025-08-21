@@ -136,7 +136,7 @@ panic(char *s)
   panicking = 1;
   printf("panic: ");
   printf("%s\n", s);
-  panicked = 1; // freeze uart output from other tasks
+  panicked = 1; // freeze uart output from other CPUs
   for(;;)
     ;
 }
