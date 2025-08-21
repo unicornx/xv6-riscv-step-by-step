@@ -1,5 +1,6 @@
 struct context;
 struct proc;
+struct spinlock;
 
 // kalloc.c
 void*           kalloc(void);
@@ -23,6 +24,14 @@ void            yield(void);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
+
+// spinlock.c
+void            acquire(struct spinlock*);
+int             holding(struct spinlock*);
+void            initlock(struct spinlock*, char*);
+void            release(struct spinlock*);
+void            push_off(void);
+void            pop_off(void);
 
 // string.c
 int             memcmp(const void*, const void*, uint);
