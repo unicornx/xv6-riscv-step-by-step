@@ -13,19 +13,18 @@ static void task_delay(volatile int count)
 
 void user_task0(void)
 {
-  printf("Task 0: Created!\n");
+  printf("Task 0: Created! cpu[%d]\n", cpuid());
   while (1) {
-    printf("Task 0: Running...\n");
+    printf("Task 0: Running... cpu[%d]\n", cpuid());
     task_delay(DELAY);
   }
 }
 
 void user_task1(void)
 {
-  printf("Task 1: Created!\n");
+  printf("Task 1: Created! cpu[%d]\n", cpuid());
   while (1) {
-    printf("Task 1: Running...\n");
+    printf("Task 1: Running... cpu[%d]\n", cpuid());
     task_delay(DELAY);
   }
 }
-

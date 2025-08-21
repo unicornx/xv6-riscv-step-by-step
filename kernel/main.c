@@ -4,22 +4,35 @@
 #include "riscv.h"
 #include "defs.h"
 
+volatile static int started = 0;
+
 // start() jumps here in supervisor mode on all CPUs.
 void
 main()
 {
-  uartinit();
-  printfinit();
-  printf("\n");
-  printf("xv6 kernel is booting\n");
-  printf("\n");
-  kinit();         // physical page allocator
-  procinit();      // process table
-  trapinit();      // trap vectors
-  trapinithart();  // install kernel trap vector
-  plicinit();      // set up interrupt controller
-  plicinithart();  // ask PLIC for device interrupts
-  userinit();      // first user process
+  if(cpuid() == 0){
+    uartinit();
+    printfinit();
+    printf("\n");
+    printf("xv6 kernel is booting\n");
+    printf("\n");
+    kinit();         // physical page allocator
+    procinit();      // process table
+    trapinit();      // trap vectors
+    trapinithart();  // install kernel trap vector
+    plicinit();      // set up interrupt controller
+    plicinithart();  // ask PLIC for device interrupts
+    userinit();      // first user process
+    __sync_synchronize();
+    started = 1;
+  } else {
+    while(started == 0)
+      ;
+    __sync_synchronize();
+    printf("hart %d starting\n", cpuid());
+    trapinithart();   // install kernel trap vector
+    plicinithart();   // ask PLIC for device interrupts
+  }
 
   scheduler();        
 }
