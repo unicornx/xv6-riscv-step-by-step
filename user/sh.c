@@ -24,17 +24,27 @@ void cmd_zombie(void)
   exit(0);
 }
 
+#define BUF_SIZE (64 * 1024)
 void cmd_memtest(void)
 {
-  char *buf = malloc(100);
-  if(buf == 0) {
-    printf("Failed to allocate memory for command buffer\n");
-    exit(1);
+  uint64 t1, t2;
+  char *buf;
+
+  printf("memtest: start ......\n");
+  t1 = uptime();
+  for(int i = 0; i < 2000; i++) {
+    buf = malloc(BUF_SIZE);
+    if(buf == 0) {
+      printf("Failed to allocate memory\n");
+      exit(1);
+    }
+    //memset(buf, 0, BUF_SIZE); // Touch the memory to ensure it's allocated
   }
-  // Not must-haveto, memory will be freed when the process is destroyed.
-  // But it's a good practice to free allocated memory.
-  free(buf);
-  printf("memtest: PASS!\n");
+  t2 = uptime();
+  printf("memtest: end. Took %ld ticks\n", t2-t1);
+
+  // To release memory allocated above.
+  exit(0);
 }
 
 void

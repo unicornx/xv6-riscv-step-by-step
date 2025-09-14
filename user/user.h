@@ -9,7 +9,7 @@ int read(int, void*, int);
 int kill(int);
 int exec(const char*, char**);
 int getpid(void);
-char* sbrk(int);
+char* sys_sbrk(int,int);
 int pause(int);
 int uptime(void);
 
@@ -18,6 +18,8 @@ int strcmp(const char*, const char*);
 char* gets(char*, int max);
 uint strlen(const char*);
 void* memset(void*, int, uint);
+char* sbrk(int);
+char* sbrklazy(int);
 
 // printf.c
 void fprintf(int, const char*, ...) __attribute__ ((format (printf, 2, 3)));
