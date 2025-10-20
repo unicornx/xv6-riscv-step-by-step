@@ -6,12 +6,19 @@
 
 #include "types.h"
 #include "param.h"
+#include "spinlock.h"
 #include "memlayout.h"
 #include "riscv.h"
 #include "defs.h"
 #include "proc.h"
 
+volatile int panicking = 0; // printing a panic message
 volatile int panicked = 0; // spinning forever at end of a panic
+
+// lock to avoid interleaving concurrent printf's.
+static struct {
+  struct spinlock lock;
+} pr;
 
 static char digits[] = "0123456789abcdef";
 
@@ -56,6 +63,9 @@ printf(char *fmt, ...)
   va_list ap;
   int i, cx, c0, c1, c2;
   char *s;
+
+  if(panicking == 0)
+    acquire(&pr.lock);
 
   va_start(ap, fmt);
   for(i = 0; (cx = fmt[i] & 0xff) != 0; i++){
@@ -114,12 +124,16 @@ printf(char *fmt, ...)
   }
   va_end(ap);
 
+  if(panicking == 0)
+    release(&pr.lock);
+
   return 0;
 }
 
 void
 panic(char *s)
 {
+  panicking = 1;
   printf("panic: ");
   printf("%s\n", s);
   panicked = 1; // freeze uart output from other tasks
@@ -130,5 +144,5 @@ panic(char *s)
 void
 printfinit(void)
 {
-  // will add some init code here in the future
+  initlock(&pr.lock, "pr");
 }
