@@ -6,6 +6,8 @@
 #include "param.h"
 #include "memlayout.h"
 #include "riscv.h"
+#include "spinlock.h"
+#include "proc.h"
 #include "defs.h"
 
 // the UART control registers are memory-mapped
@@ -35,6 +37,7 @@
 #define LSR_RX_READY (1<<0)   // input is waiting to be read from RHR
 #define LSR_TX_IDLE (1<<5)    // THR can accept another character to send
 
+extern volatile int panicking; // from printf.c
 extern volatile int panicked; // from printf.c
 
 void
@@ -71,6 +74,9 @@ uartinit(void)
 void
 uartputc_sync(int c)
 {
+  if(panicking == 0)
+    push_off();
+
   if(panicked){
     for(;;)
       ;
@@ -80,6 +86,9 @@ uartputc_sync(int c)
   while((ReadReg(LSR) & LSR_TX_IDLE) == 0)
     ;
   WriteReg(THR, c);
+
+  if(panicking == 0)
+    pop_off();
 }
 
 // try to read one input character from the UART.
