@@ -2,6 +2,7 @@
 #include "param.h"
 #include "memlayout.h"
 #include "riscv.h"
+#include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
 
@@ -10,6 +11,7 @@ struct cpu cpus[NCPU];
 struct proc proc[NPROC];
 
 int nextpid = 1;
+struct spinlock pid_lock;
 
 extern void kerneltrapret(void);
 
@@ -19,6 +21,7 @@ procinit(void)
 {
   struct proc *p;
   
+  initlock(&pid_lock, "nextpid");
   for(p = proc; p < &proc[NPROC]; p++) {
       p->state = UNUSED;
       p->kstack = (uint64)kalloc();
@@ -56,8 +59,10 @@ allocpid()
 {
   int pid;
   
+  acquire(&pid_lock);
   pid = nextpid;
   nextpid = nextpid + 1;
+  release(&pid_lock);
 
   return pid;
 }
