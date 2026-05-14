@@ -14,6 +14,7 @@ int nextpid = 1;
 struct spinlock pid_lock;
 
 extern void kerneltrapret(void);
+static void freeproc(struct proc *p);
 
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
@@ -113,6 +114,14 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+  // An empty user page table.
+  p->pagetable = proc_pagetable(p);
+  if(p->pagetable == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
   // Set up new context to start executing
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)kerneltrapret;
@@ -121,6 +130,43 @@ found:
   p->start = start_routin;
 
   return p;
+}
+
+// free a proc structure and the data hanging from it,
+// including user pages.
+// p->lock must be held.
+static void
+freeproc(struct proc *p)
+{
+  if(p->pagetable)
+    proc_freepagetable(p->pagetable, p->sz);
+  p->pagetable = 0;
+  p->sz = 0;
+  p->pid = 0;
+  p->name[0] = 0;
+  p->state = UNUSED;
+}
+
+// Create a user page table for a given process, with no user memory.
+pagetable_t
+proc_pagetable(struct proc *p)
+{
+  pagetable_t pagetable;
+
+  // An empty page table.
+  pagetable = uvmcreate();
+  if(pagetable == 0)
+    return 0;
+
+  return pagetable;
+}
+
+// Free a process's page table, and free the
+// physical memory it refers to.
+void
+proc_freepagetable(pagetable_t pagetable, uint64 sz)
+{
+  uvmfree(pagetable, sz);
 }
 
 // Set up first user process.
