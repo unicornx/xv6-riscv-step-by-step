@@ -1,4 +1,5 @@
 K=kernel
+U=user
 
 OBJS = \
   $K/entry.o \
@@ -16,7 +17,8 @@ OBJS = \
   $K/trampoline.o \
   $K/trap.o \
   $K/kernelvec.o \
-  $K/plic.o
+  $K/plic.o \
+  $K/initcode.o
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -74,7 +76,7 @@ endif
 
 LDFLAGS = -z max-page-size=4096
 
-$K/kernel: $(OBJS) $K/kernel.ld
+$K/kernel: $(OBJS) $K/kernel.ld $K/initcode.c
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
@@ -85,13 +87,25 @@ $K/%.o: $K/%.S
 tags: $(OBJS)
 	etags kernel/*.S kernel/*.c
 
--include kernel/*.d
+$K/initcode.c: $U/initcode
+	$U/gen_ccode.sh $U/initcode $K/initcode.c
+
+$U/start.o : $U/start.S
+	$(CC) $(CFLAGS) -c -o $U/start.o $U/start.S
+
+$U/initcode: $U/start.o $U/init.o
+	$(LD) $(LDFLAGS) -N -e _start -Ttext 0 -o $U/initcode.out $U/start.o $U/init.o
+	$(OBJCOPY) -S -O binary $U/initcode.out $U/initcode
+	$(OBJDUMP) -S $U/initcode.out > $U/initcode.asm
+
+-include kernel/*.d user/*.d
 
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
-	$K/kernel \
-	.gdbinit
+	$U/initcode $U/initcode.out $K/kernel \
+	.gdbinit \
+	$K/initcode.c
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
