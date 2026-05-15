@@ -51,6 +51,11 @@ int             strlen(const char*);
 int             strncmp(const char*, const char*, uint);
 char*           strncpy(char*, const char*, int);
 
+// syscall.c
+void            argint(int, int*);
+void            argaddr(int, uint64 *);
+void            syscall();
+
 // trap.c
 void            trapinit(void);
 void            trapinithart(void);

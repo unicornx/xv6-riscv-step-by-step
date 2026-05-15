@@ -50,7 +50,16 @@ usertrap(void)
   
   if(r_scause() == 8){
     // system call
-    panic("usertrap: syscall not implemented yet");
+
+    // sepc points to the ecall instruction,
+    // but we want to return to the next instruction.
+    p->trapframe->epc += 4;
+
+    // an interrupt will change sepc, scause, and sstatus,
+    // so enable only now that we're done with those registers.
+    intr_on();
+
+    syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

@@ -16,6 +16,7 @@ OBJS = \
   $K/swtch.o \
   $K/trampoline.o \
   $K/trap.o \
+  $K/syscall.o \
   $K/kernelvec.o \
   $K/plic.o \
   $K/initcode.o
