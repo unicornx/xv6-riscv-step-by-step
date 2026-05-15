@@ -29,6 +29,7 @@ void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
 void            userinit(void);
 void            yield(void);
+int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
 
 // swtch.S
@@ -77,6 +78,8 @@ pagetable_t     uvmcreate(void);
 void            uvmfree(pagetable_t, uint64);
 void            uvmunmap(pagetable_t, uint64, uint64, int);
 pte_t *         walk(pagetable_t, uint64, int);
+uint64          walkaddr(pagetable_t, uint64);
+int             copyin(pagetable_t, char *, uint64, uint64);
 
 // plic.c
 void            plicinit(void);

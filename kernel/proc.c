@@ -357,6 +357,21 @@ forkret(void)
   ((void (*)(uint64))trampoline_userret)(satp);
 }
 
+// Copy from either a user address, or kernel address,
+// depending on usr_src.
+// Returns 0 on success, -1 on error.
+int
+either_copyin(void *dst, int user_src, uint64 src, uint64 len)
+{
+  struct proc *p = myproc();
+  if(user_src){
+    return copyin(p->pagetable, dst, src, len);
+  } else {
+    memmove(dst, (char*)src, len);
+    return 0;
+  }
+}
+
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.

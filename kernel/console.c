@@ -51,19 +51,20 @@ struct {
 } cons;
 
 //
-// user write()s to the console go here.
+// user write() system calls to the console go here.
 //
 int
-consolewrite(uint64 src, int n)
+consolewrite(int user_src, uint64 src, int n)
 {
-  char buf[32];
+  char buf[32]; // move batches from user space to uart.
   int i = 0;
 
   while(i < n){
     int nn = sizeof(buf);
     if(nn > n - i)
       nn = n - i;
-    memmove(buf, (const void *)src+i, nn);
+    if(either_copyin(buf, user_src, src+i, nn) == -1)
+      break;
     uartwrite(buf, nn);
     i += nn;
   }

@@ -17,6 +17,7 @@ OBJS = \
   $K/trampoline.o \
   $K/trap.o \
   $K/syscall.o \
+  $K/sysfile.o \
   $K/kernelvec.o \
   $K/plic.o \
   $K/initcode.o
@@ -94,10 +95,13 @@ $K/initcode.c: $U/initcode
 $U/start.o : $U/start.S
 	$(CC) $(CFLAGS) -c -o $U/start.o $U/start.S
 
-$U/initcode: $U/start.o $U/init.o
-	$(LD) $(LDFLAGS) -N -e _start -Ttext 0 -o $U/initcode.out $U/start.o $U/init.o
+$U/initcode: $U/start.o $U/init.o $U/usys.o $U/printf.o
+	$(LD) $(LDFLAGS) -N -e _start -Ttext 0 -o $U/initcode.out $U/start.o $U/init.o $U/usys.o $U/printf.o
 	$(OBJCOPY) -S -O binary $U/initcode.out $U/initcode
 	$(OBJDUMP) -S $U/initcode.out > $U/initcode.asm
+
+$U/usys.o : $U/usys.S
+	$(CC) $(CFLAGS) -c -o $U/usys.o $U/usys.S
 
 -include kernel/*.d user/*.d
 

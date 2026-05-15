@@ -45,11 +45,13 @@ argaddr(int n, uint64 *ip)
   *ip = argraw(n);
 }
 
+// Prototypes for the functions that handle system calls.
+extern uint64 sys_write(void);
+
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
 static uint64 (*syscalls[])(void) = {
-// For example, to be added soon:
-// [SYS_write]   sys_write,
+[SYS_write]   sys_write,
 };
 
 void
