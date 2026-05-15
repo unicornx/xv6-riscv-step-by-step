@@ -1,6 +1,8 @@
+#include "user/user.h"
+
 int
 main(void)
 {
-  while(1);
+  printf("hello world!\n");
 }
 
