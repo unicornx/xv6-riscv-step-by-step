@@ -17,3 +17,5 @@ sub entry {
 	
 entry("write");
 entry("getpid");
+entry("pause");
+entry("uptime");

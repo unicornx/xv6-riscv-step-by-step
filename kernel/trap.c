@@ -6,6 +6,9 @@
 #include "proc.h"
 #include "defs.h"
 
+struct spinlock tickslock;
+uint ticks;
+
 extern char trampoline[], uservec[];
 
 // in kernelvec.S, calls kerneltrap().
@@ -16,7 +19,7 @@ extern int devintr();
 void
 trapinit(void)
 {
-  // will add more here later.
+  initlock(&tickslock, "time");
 }
 
 // set up to take exceptions and traps while in the kernel.
@@ -152,6 +155,13 @@ kerneltrap()
 void
 clockintr()
 {
+  if(cpuid() == 0){
+    acquire(&tickslock);
+    ticks++;
+    wakeup(&ticks);
+    release(&tickslock);
+  }
+
   // ask for the next timer interrupt. this also clears
   // the interrupt request. 1000000 is about a tenth
   // of a second.
