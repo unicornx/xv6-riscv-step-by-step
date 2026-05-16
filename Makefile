@@ -96,8 +96,10 @@ $K/initcode.c: $U/initcode
 $U/start.o : $U/start.S
 	$(CC) $(CFLAGS) -c -o $U/start.o $U/start.S
 
-$U/initcode: $U/start.o $U/init.o $U/usys.o $U/printf.o
-	$(LD) $(LDFLAGS) -N -e _start -Ttext 0 -o $U/initcode.out $U/start.o $U/init.o $U/usys.o $U/printf.o
+ULIB = $U/ulib.o $U/usys.o $U/printf.o
+
+$U/initcode: $U/start.o $U/init.o $(ULIB)
+	$(LD) $(LDFLAGS) -N -e _start -Ttext 0 -o $U/initcode.out $U/start.o $U/init.o $(ULIB)
 	$(OBJCOPY) -S -O binary $U/initcode.out $U/initcode
 	$(OBJDUMP) -S $U/initcode.out > $U/initcode.asm
 
