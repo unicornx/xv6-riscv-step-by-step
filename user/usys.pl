@@ -15,6 +15,7 @@ sub entry {
     print " ret\n";
 }
 	
+entry("read");
 entry("write");
 entry("getpid");
 entry("pause");

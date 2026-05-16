@@ -52,6 +52,7 @@ struct {
 
 //
 // user write() system calls to the console go here.
+// uses sleep() and UART interrupts.
 //
 int
 consolewrite(int user_src, uint64 src, int n)
@@ -75,9 +76,11 @@ consolewrite(int user_src, uint64 src, int n)
 //
 // user read()s from the console go here.
 // copy (up to) a whole input line to dst.
+// user_dst indicates whether dst is a user
+// or kernel address.
 //
 int
-consoleread(uint64 dst, int n)
+consoleread(int user_dst, uint64 dst, int n)
 {
   uint target;
   int c;
@@ -88,11 +91,9 @@ consoleread(uint64 dst, int n)
   while(n > 0){
     // wait until interrupt handler has put some
     // input into cons.buffer.
-    release(&cons.lock);
     while(cons.r == cons.w){
-      asm volatile ("" : : : "memory"); // Preventing possible optimizations
+      sleep(&cons.r, &cons.lock);
     }
-    acquire(&cons.lock);
 
     c = cons.buf[cons.r++ % INPUT_BUF_SIZE];
 
@@ -107,7 +108,8 @@ consoleread(uint64 dst, int n)
 
     // copy the input byte to the user-space buffer.
     cbuf = c;
-    *((char *)dst) = cbuf;
+    if(either_copyout(user_dst, dst, &cbuf, 1) == -1)
+      break;
 
     dst++;
     --n;
@@ -166,6 +168,7 @@ consoleintr(int c)
         // wake up consoleread() if a whole line (or end-of-file)
         // has arrived.
         cons.w = cons.e;
+        wakeup(&cons.r);
       }
     }
     break;
