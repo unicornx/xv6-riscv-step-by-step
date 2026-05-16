@@ -3,17 +3,13 @@
 int
 main(void)
 {
-  int ticks1, ticks2;
-  int pid = getpid();
-  printf("hello world! my pid is %d\n", pid);
+  char c;
 
-  printf("--> Sleeping 2s ......\n");
-  ticks1 = uptime();
-  // sleep is a system call that sleeps for a specified number of ticks
-  // every tick is 1000000, about a tenth of a second(0.1s).
-  pause(20); // 2 seconds
-  ticks2 = uptime();
-  printf("<-- Woke-up! Elasped ticks = %d.\n", ticks2 - ticks1);
-
-  return 0;
+  for(;;) {
+    // read will block until there is a enter,
+    // or EOF or console buffer is full.
+    read(0, &c, 1);
+    printf("->");
+    printf("%c", c);
+  }
 }

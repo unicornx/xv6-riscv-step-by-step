@@ -40,6 +40,7 @@
 // for sending threads to synchronize with uart "ready" interrupts.
 static struct spinlock tx_lock;
 static int tx_busy;           // is the UART busy sending?
+static int tx_chan;           // &tx_chan is the "wait channel"
 
 extern volatile int panicking; // from printf.c
 extern volatile int panicked; // from printf.c
@@ -82,14 +83,12 @@ uartwrite(char buf[], int n)
 
   int i = 0;
   while(i < n){ 
-    release(&tx_lock);
     while(tx_busy != 0){
       // wait for a UART transmit-complete interrupt
       // to set tx_busy to 0.
-      asm volatile ("" : : : "memory"); // Preventing possible optimizations
-    }
-    acquire(&tx_lock);
-
+      sleep(&tx_chan, &tx_lock);
+    }   
+      
     WriteReg(THR, buf[i]);
     i += 1;
     tx_busy = 1;
@@ -148,6 +147,7 @@ uartintr(void)
   if(ReadReg(LSR) & LSR_TX_IDLE){
     // UART finished transmitting; wake up sending thread.
     tx_busy = 0;
+    wakeup(&tx_chan);
   }
   release(&tx_lock);
 
