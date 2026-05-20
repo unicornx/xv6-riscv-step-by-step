@@ -54,6 +54,7 @@ char*           strncpy(char*, const char*, int);
 // trap.c
 void            trapinit(void);
 void            trapinithart(void);
+void            prepare_return(void);
 
 // uart.c
 void            uartinit(void);
