@@ -6,6 +6,8 @@
 #include "proc.h"
 #include "defs.h"
 
+extern char trampoline[], uservec[];
+
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
 
@@ -22,6 +24,89 @@ void
 trapinithart(void)
 {
   w_stvec((uint64)kernelvec);
+}
+
+//
+// handle an interrupt, exception, or system call from user space.
+// called from, and returns to, trampoline.S
+// return value is user satp for trampoline.S to switch to.
+//
+uint64
+usertrap(void)
+{
+  int which_dev = 0;
+
+  if((r_sstatus() & SSTATUS_SPP) != 0)
+    panic("usertrap: not from user mode");
+
+  // send interrupts and exceptions to kerneltrap(),
+  // since we're now in the kernel.
+  w_stvec((uint64)kernelvec);  //DOC: kernelvec
+
+  struct proc *p = myproc();
+  
+  // save user program counter.
+  p->trapframe->epc = r_sepc();
+  
+  if(r_scause() == 8){
+    // system call
+    panic("usertrap: syscall not implemented yet");
+  } else if((which_dev = devintr()) != 0){
+    // ok
+  } else {
+    printf("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
+    printf("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
+    panic("usertrap: should be killed but we have not support killing!");
+  }
+
+  // give up the CPU if this is a timer interrupt.
+  if(which_dev == 2)
+    yield();
+
+  prepare_return();
+
+  // the user page table to switch to, for trampoline.S
+  uint64 satp = MAKE_SATP(p->pagetable);
+
+  // return to trampoline.S; satp value in a0.
+  return satp;
+}
+
+//
+// set up trapframe and control registers for a return to user space
+//
+void
+prepare_return(void)
+{
+  struct proc *p = myproc();
+
+  // we're about to switch the destination of traps from
+  // kerneltrap() to usertrap(). because a trap from kernel
+  // code to usertrap would be a disaster, turn off interrupts.
+  intr_off();
+
+  // send syscalls, interrupts, and exceptions to uservec in trampoline.S
+  uint64 trampoline_uservec = TRAMPOLINE + (uservec - trampoline);
+  w_stvec(trampoline_uservec);
+
+  // set up trapframe values that uservec will need when
+  // the process next traps into the kernel.
+  p->trapframe->kernel_satp = r_satp();         // kernel page table
+  p->trapframe->kernel_sp = p->kstack + PGSIZE; // process's kernel stack
+  p->trapframe->kernel_trap = (uint64)usertrap;
+  p->trapframe->kernel_hartid = r_tp();         // hartid for cpuid()
+
+  // set up the registers that trampoline.S's sret will use
+  // to get to user space.
+  
+  // set S Previous Privilege mode to User.
+  unsigned long x = r_sstatus();
+  x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode
+  x |= SSTATUS_SPIE; // enable interrupts in user mode
+  w_sstatus(x);
+
+  // set S Exception Program Counter to the saved user pc.
+  w_sepc(p->trapframe->epc);
 }
 
 // interrupts and exceptions from kernel code go here via kernelvec,
