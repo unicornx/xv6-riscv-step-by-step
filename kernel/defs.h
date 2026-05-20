@@ -79,10 +79,5 @@ void            plicinithart(void);
 int             plic_claim(void);
 void            plic_complete(int);
 
-// user.c
-void            user_task0(void);
-void            user_task1(void);
-void            user_shell(void);
-
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
