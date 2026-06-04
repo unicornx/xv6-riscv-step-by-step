@@ -8,11 +8,8 @@ _*
 vectors.S
 bootblock
 entryother
-initcode
-initcode.out
 kernelmemfs
 kernel/kernel
 user/usys.S
 .gdbinit
 TAGS
-kernel/initcode.c

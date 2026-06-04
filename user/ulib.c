@@ -2,6 +2,18 @@
 #include "kernel/riscv.h"
 #include "user/user.h"
 
+//
+// wrapper so that it's OK if main() does not call exit().
+//
+void
+start(int argc, char **argv)
+{
+  int r;
+  extern int main(int argc, char **argv);
+  r = main(argc, argv);
+  exit(r);
+}
+
 int
 strcmp(const char *p, const char *q)
 {
