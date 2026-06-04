@@ -18,10 +18,11 @@ OBJS = \
   $K/trap.o \
   $K/syscall.o \
   $K/sysproc.o \
+  $K/exec.o \
   $K/sysfile.o \
   $K/kernelvec.o \
   $K/plic.o \
-  $K/initcode.o
+  $K/_init.o \
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -79,7 +80,7 @@ endif
 
 LDFLAGS = -z max-page-size=4096
 
-$K/kernel: $(OBJS) $K/kernel.ld $K/initcode.c
+$K/kernel: $U/_init $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
@@ -90,18 +91,17 @@ $K/%.o: $K/%.S
 tags: $(OBJS)
 	etags kernel/*.S kernel/*.c
 
-$K/initcode.c: $U/initcode
-	$U/gen_ccode.sh $U/initcode $K/initcode.c
-
-$U/start.o : $U/start.S
-	$(CC) $(CFLAGS) -c -o $U/start.o $U/start.S
+$K/_init.o: $K/_init.c
+	$(CC) $(CFLAGS) -c -o $K/_init.o $K/_init.c
 
 ULIB = $U/ulib.o $U/usys.o $U/printf.o
 
-$U/initcode: $U/start.o $U/init.o $(ULIB)
-	$(LD) $(LDFLAGS) -N -e _start -Ttext 0 -o $U/initcode.out $U/start.o $U/init.o $(ULIB)
-	$(OBJCOPY) -S -O binary $U/initcode.out $U/initcode
-	$(OBJDUMP) -S $U/initcode.out > $U/initcode.asm
+_%: %.o $(ULIB) $U/user.ld
+	$(LD) $(LDFLAGS) -T $U/user.ld -o $@ $< $(ULIB)
+	$(OBJDUMP) -S $@ > $*.asm
+	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $*.sym
+	$U/gen_ccode.sh $@ $@.c
+	mv $@.c $K/
 
 $U/usys.S : $U/usys.pl
 	perl $U/usys.pl > $U/usys.S
@@ -109,15 +109,25 @@ $U/usys.S : $U/usys.pl
 $U/usys.o : $U/usys.S
 	$(CC) $(CFLAGS) -c -o $U/usys.o $U/usys.S
 
+# Prevent deletion of intermediate files, e.g. cat.o, after first build, so
+# that disk image changes after first build are persistent until clean.  More
+# details:
+# http://www.gnu.org/software/make/manual/html_node/Chained-Rules.html
+.PRECIOUS: %.o
+
+UPROGS=\
+	$U/_init\
+
 -include kernel/*.d user/*.d
 
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
-	$U/initcode $U/initcode.out $K/kernel \
+	$K/kernel \
 	.gdbinit \
 	$U/usys.S \
-	$K/initcode.c
+	$(UPROGS) \
+	$K/_*.c
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)

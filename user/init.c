@@ -24,10 +24,16 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
-void
-main(void)
+int
+main(int argc, char *argv[])
 {
   static char buf[100];
+  int i;
+
+  printf("init: argc = %d\n", argc);
+  for(i = 0; i < argc; i++){
+    printf("init: argv[%d] is: %s\n", i, argv[i]);
+  }
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
@@ -39,4 +45,6 @@ main(void)
     cmd[strlen(cmd) - 1] = '\0';
     runcmd(cmd);
   }
+
+  return 0;
 }

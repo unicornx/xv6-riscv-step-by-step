@@ -206,41 +206,6 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
   uvmfree(pagetable, sz);
 }
 
-// a user program from ../user/initcode
-// od -t xC ../user/initcode
-extern uchar initcode[];
-extern int sizeof_initcode;
-
-// Load the user initcode into address 0 of pagetable,
-// for the very first process.
-// sz must not more than a page.
-static int
-loadinit(uchar *src, uint sz)
-{
-  char *mem;
-  struct proc *p = myproc();
-  pagetable_t pagetable = p->pagetable;
-
-  if(sz > PGSIZE)
-    panic("loadinit: more than a page");
-  mem = kalloc();
-  if(mem == 0)
-    panic("kalloc");
-  memset(mem, 0, PGSIZE);
-  if (mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W | PTE_R | PTE_X | PTE_U) < 0)
-    panic("loadinit: mappages failed");
-  memmove(mem, src, sz);
-  p->sz = PGSIZE;
-
-  safestrcpy(p->name, "init", sizeof(p->name));
-
-  // prepare for the very first "return" from kernel to user.
-  p->trapframe->epc = 0;      // user program counter
-  p->trapframe->sp = PGSIZE;  // user stack pointer
-
-  return 0;
-}
-
 // Set up first user process.
 void
 userinit(void)
@@ -376,11 +341,11 @@ forkret(void)
     // ensure other cores see first=0.
     __sync_synchronize();
 
-    // We can invoke loadinit() now.
-    // Put the return value (argc) of loadinit into a0.
-    p->trapframe->a0 = loadinit(initcode, sizeof_initcode);
+    // We can invoke kexec() now.
+    // Put the return value (argc) of kexec into a0.
+    p->trapframe->a0 = kexec("init", (char *[]){ "init", 0 });
     if (p->trapframe->a0 == -1) {
-      panic("loadinit");
+      panic("exec");
     }
   }
 
