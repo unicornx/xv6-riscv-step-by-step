@@ -2,6 +2,7 @@
 int exit(int) __attribute__((noreturn));
 int write(int, const void*, int);
 int read(int, void*, int);
+int exec(const char*, char**);
 int getpid(void);
 int pause(int);
 int uptime(void);

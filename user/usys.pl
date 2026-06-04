@@ -18,6 +18,7 @@ sub entry {
 entry("exit");
 entry("read");
 entry("write");
+entry("exec");
 entry("getpid");
 entry("pause");
 entry("uptime");

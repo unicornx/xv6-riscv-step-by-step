@@ -7,6 +7,29 @@
 #include "syscall.h"
 #include "defs.h"
 
+// Fetch the uint64 at addr from the current process.
+int
+fetchaddr(uint64 addr, uint64 *ip)
+{
+  struct proc *p = myproc();
+  if(addr >= p->sz || addr+sizeof(uint64) > p->sz) // both tests needed, in case of overflow
+    return -1;
+  if(copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
+    return -1;
+  return 0;
+}
+
+// Fetch the nul-terminated string at addr from the current process.
+// Returns length of string, not including nul, or -1 for error.
+int
+fetchstr(uint64 addr, char *buf, int max)
+{
+  struct proc *p = myproc();
+  if(copyinstr(p->pagetable, buf, addr, max) < 0)
+    return -1;
+  return strlen(buf);
+}
+
 static uint64
 argraw(int n)
 {
@@ -45,9 +68,21 @@ argaddr(int n, uint64 *ip)
   *ip = argraw(n);
 }
 
+// Fetch the nth word-sized system call argument as a null-terminated string.
+// Copies into buf, at most max.
+// Returns string length if OK (including nul), -1 if error.
+int
+argstr(int n, char *buf, int max)
+{
+  uint64 addr;
+  argaddr(n, &addr);
+  return fetchstr(addr, buf, max);
+}
+
 // Prototypes for the functions that handle system calls.
 extern uint64 sys_exit(void);
 extern uint64 sys_read(void);
+extern uint64 sys_exec(void);
 extern uint64 sys_getpid(void);
 extern uint64 sys_pause(void);
 extern uint64 sys_uptime(void);
@@ -58,6 +93,7 @@ extern uint64 sys_write(void);
 static uint64 (*syscalls[])(void) = {
 [SYS_exit]    sys_exit,
 [SYS_read]    sys_read,
+[SYS_exec]    sys_exec,
 [SYS_getpid]  sys_getpid,
 [SYS_pause]   sys_pause,
 [SYS_uptime]  sys_uptime,
