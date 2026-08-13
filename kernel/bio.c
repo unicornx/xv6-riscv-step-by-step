@@ -2,19 +2,22 @@
 //
 // The buffer cache is a linked list of buf structures holding
 // cached copies of disk block contents.  Caching disk blocks
-// in memory reduces the number of disk reads.
+// in memory reduces the number of disk reads and also provides
+// a synchronization point for disk blocks used by multiple processes.
 //
 // Interface:
 // * To get a buffer for a particular disk block, call bread.
 // * Have not supported bwrite to write it to disk.
 // * When done with the buffer, call brelse.
 // * Do not use the buffer after calling brelse.
-// * Have not supported multi-processes accessing.
+// * Only one process at a time can use a buffer,
+//     so do not keep them longer than necessary.
 
 
 #include "types.h"
 #include "param.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
@@ -43,6 +46,7 @@ binit(void)
   for(b = bcache.buf; b < bcache.buf+NBUF; b++){
     b->next = bcache.head.next;
     b->prev = &bcache.head;
+    initsleeplock(&b->lock, "buffer");
     bcache.head.next->prev = b;
     bcache.head.next = b;
   }
@@ -63,6 +67,7 @@ bget(uint dev, uint blockno)
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
       release(&bcache.lock);
+      acquiresleep(&b->lock);
       return b;
     }
   }
@@ -76,6 +81,7 @@ bget(uint dev, uint blockno)
       b->valid = 0;
       b->refcnt = 1;
       release(&bcache.lock);
+      acquiresleep(&b->lock);
       return b;
     }
   }
@@ -101,6 +107,11 @@ bread(uint dev, uint blockno)
 void
 brelse(struct buf *b)
 {
+  if(!holdingsleep(&b->lock))
+    panic("brelse");
+
+  releasesleep(&b->lock);
+
   acquire(&bcache.lock);
   b->refcnt--;
   if (b->refcnt == 0) {
