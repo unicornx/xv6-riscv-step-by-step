@@ -20,6 +20,10 @@ int             kexec(char*, char**);
 
 // fs.c
 void            fsinit(int);
+struct dinode*  dirlookup(struct dinode*, char*, uint*);
+int             namecmp(const char*, const char*);
+struct dinode*  namei(char*);
+int             readi(struct dinode*, int, uint64, uint, uint);
 
 // kalloc.c
 void*           kalloc(void);

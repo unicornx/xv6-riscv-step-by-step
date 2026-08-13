@@ -25,8 +25,7 @@ OBJS = \
   $K/sysfile.o \
   $K/kernelvec.o \
   $K/plic.o \
-  $K/virtio_disk.o \
-  $K/ramfs.o \
+  $K/virtio_disk.o
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -101,8 +100,6 @@ _%: %.o $(ULIB) $U/user.ld
 	$(LD) $(LDFLAGS) -T $U/user.ld -o $@ $< $(ULIB)
 	$(OBJDUMP) -S $@ > $*.asm
 	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $*.sym
-	$U/gen_ccode.sh $@ $@.c
-	mv $@.c $K/
 
 $U/usys.S : $U/usys.pl
 	perl $U/usys.pl > $U/usys.S
@@ -127,8 +124,6 @@ UPROGS=\
 	$U/_sh\
 	$U/_zombie\
 
-$K/ramfs.c: fs.img
-
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
 
@@ -140,8 +135,7 @@ clean:
 	$K/kernel fs.img \
 	mkfs/mkfs mkfs/dumpfs .gdbinit \
 	$U/usys.S \
-	$(UPROGS) \
-	$K/_*.c
+	$(UPROGS)
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
