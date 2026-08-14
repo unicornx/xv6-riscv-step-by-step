@@ -21,6 +21,7 @@ OBJS = \
   $K/bio.o \
   $K/fs.o \
   $K/sleeplock.o \
+  $K/file.o \
   $K/exec.o \
   $K/sysfile.o \
   $K/kernelvec.o \

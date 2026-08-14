@@ -257,7 +257,7 @@ growproc(int n)
 int
 kfork(void)
 {
-  int pid;
+  int i, pid;
   struct proc *np;
   struct proc *p = myproc();
 
@@ -279,6 +279,11 @@ kfork(void)
 
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
+
+  // increment reference counts on open file descriptors.
+  for(i = 0; i < NOFILE; i++)
+    if(p->ofile[i])
+      np->ofile[i] = filedup(p->ofile[i]);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
@@ -322,6 +327,15 @@ kexit(int status)
 
   if(p == initproc)
     panic("init exiting");
+
+  // Close all open files.
+  for(int fd = 0; fd < NOFILE; fd++){
+    if(p->ofile[fd]){
+      struct file *f = p->ofile[fd];
+      fileclose(f);
+      p->ofile[fd] = 0;
+    }
+  }
 
   acquire(&wait_lock);
 

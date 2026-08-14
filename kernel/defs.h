@@ -1,5 +1,6 @@
 struct buf;
 struct context;
+struct file;
 struct inode;
 struct proc;
 struct spinlock;
@@ -18,6 +19,12 @@ void            consputc(int);
 
 // exec.c
 int             kexec(char*, char**);
+
+// file.c
+struct file*    filealloc(void);
+void            fileclose(struct file*);
+struct file*    filedup(struct file*);
+void            fileinit(void);
 
 // fs.c
 void            fsinit(int);
