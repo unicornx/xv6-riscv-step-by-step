@@ -1,5 +1,6 @@
 struct buf;
 struct context;
+struct inode;
 struct proc;
 struct spinlock;
 struct sleeplock;
@@ -20,10 +21,15 @@ int             kexec(char*, char**);
 
 // fs.c
 void            fsinit(int);
-struct dinode*  dirlookup(struct dinode*, char*, uint*);
+struct inode*   dirlookup(struct inode*, char*, uint*);
+void            iinit();
+void            ilock(struct inode*);
+void            iput(struct inode*);
+void            iunlock(struct inode*);
+void            iunlockput(struct inode*);
 int             namecmp(const char*, const char*);
-struct dinode*  namei(char*);
-int             readi(struct dinode*, int, uint64, uint, uint);
+struct inode*   namei(char*);
+int             readi(struct inode*, int, uint64, uint, uint);
 
 // kalloc.c
 void*           kalloc(void);

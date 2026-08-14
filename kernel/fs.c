@@ -19,6 +19,7 @@
 #include "sleeplock.h"
 #include "fs.h"
 #include "buf.h"
+#include "file.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 // there should be one superblock per disk device, but we run with
@@ -44,28 +45,181 @@ fsinit(int dev) {
     panic("invalid file system");
 }
 
-// The scenario of multi-tasks concurrently accessing a single file
-// has not yet been considered, so a single global inode is sufficient.
-struct dinode icache;
+// Inodes.
+//
+// An inode describes a single unnamed file.
+// The inode disk structure holds metadata: the file's type,
+// its size, the number of links referring to it, and the
+// list of blocks holding the file's content.
+//
+// The inodes are laid out sequentially on disk at block
+// sb.inodestart. Each inode has a number, indicating its
+// position on the disk.
+//
+// The kernel keeps a table of in-use inodes in memory
+// to provide a place for synchronizing access
+// to inodes used by multiple processes. The in-memory
+// inodes include book-keeping information that is
+// not stored on disk: ip->ref and ip->valid.
+//
+// An inode and its in-memory representation go through a
+// sequence of states before they can be used by the
+// rest of the file system code.
+//
+// * Allocation: an inode is allocated if its type (on disk)
+//   is non-zero. ialloc() allocates, and iput() frees if
+//   the reference and link counts have fallen to zero.
+//
+// * Referencing in table: an entry in the inode table
+//   is free if ip->ref is zero. Otherwise ip->ref tracks
+//   the number of in-memory pointers to the entry (open
+//   files and current directories). iget() finds or
+//   creates a table entry and increments its ref; iput()
+//   decrements ref.
+//
+// * Valid: the information (type, size, &c) in an inode
+//   table entry is only correct when ip->valid is 1.
+//   ilock() reads the inode from
+//   the disk and sets ip->valid, while iput() clears
+//   ip->valid if ip->ref has fallen to zero.
+//
+// * Locked: file system code may only examine and modify
+//   the information in an inode and its content if it
+//   has first locked the inode.
+//
+// Thus a typical sequence is:
+//   ip = iget(dev, inum)
+//   ilock(ip)
+//   ... examine and modify ip->xxx ...
+//   iunlock(ip)
+//   iput(ip)
+//
+// ilock() is separate from iget() so that system calls can
+// get a long-term reference to an inode (as for an open file)
+// and only lock it for short periods (e.g., in read()).
+// The separation also helps avoid deadlock and races during
+// pathname lookup. iget() increments ip->ref so that the inode
+// stays in the table and pointers to it remain valid.
+//
+// Many internal file system functions expect the caller to
+// have locked the inodes involved; this lets callers create
+// multi-step atomic operations.
+//
+// The itable.lock spin-lock protects the allocation of itable
+// entries. Since ip->ref indicates whether an entry is free,
+// and ip->dev and ip->inum indicate which i-node an entry
+// holds, one must hold itable.lock while using any of those fields.
+//
+// An ip->lock sleep-lock protects all ip-> fields other than ref,
+// dev, and inum.  One must hold ip->lock in order to
+// read or write that inode's ip->valid, ip->size, ip->type, &c.
+
+struct {
+  struct spinlock lock;
+  struct inode inode[NINODE];
+} itable;
+
+void
+iinit()
+{
+  int i = 0;
+  
+  initlock(&itable.lock, "itable");
+  for(i = 0; i < NINODE; i++) {
+    initsleeplock(&itable.inode[i].lock, "inode");
+  }
+}
 
 // Find the inode with number inum on device dev
 // and return the in-memory copy. Does not lock
 // the inode and does not read it from disk.
-static struct dinode*
+static struct inode*
 iget(uint dev, uint inum)
+{
+  struct inode *ip, *empty;
+
+  acquire(&itable.lock);
+
+  // Is the inode already in the table?
+  empty = 0;
+  for(ip = &itable.inode[0]; ip < &itable.inode[NINODE]; ip++){
+    if(ip->ref > 0 && ip->dev == dev && ip->inum == inum){
+      ip->ref++;
+      release(&itable.lock);
+      return ip;
+    }
+    if(empty == 0 && ip->ref == 0)    // Remember empty slot.
+      empty = ip;
+  }
+
+  // Recycle an inode entry.
+  if(empty == 0)
+    panic("iget: no inodes");
+
+  ip = empty;
+  ip->dev = dev;
+  ip->inum = inum;
+  ip->ref = 1;
+  ip->valid = 0;
+  release(&itable.lock);
+
+  return ip;
+}
+
+// Lock the given inode.
+// Reads the inode from disk if necessary.
+void
+ilock(struct inode *ip)
 {
   struct buf *bp;
   struct dinode *dip;
 
-  bp = bread(dev, IBLOCK(inum, sb));
-  dip = (struct dinode*)bp->data + inum%IPB;
-  icache.type = dip->type;
-  icache.nlink = dip->nlink;
-  icache.size = dip->size;
-  memmove(icache.addrs, dip->addrs, sizeof(icache.addrs));
-  brelse(bp);
+  if(ip == 0 || ip->ref < 1)
+    panic("ilock");
 
-  return &icache;
+  acquiresleep(&ip->lock);
+
+  if(ip->valid == 0){
+    bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+    dip = (struct dinode*)bp->data + ip->inum%IPB;
+    ip->type = dip->type;
+    ip->nlink = dip->nlink;
+    ip->size = dip->size;
+    memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+    brelse(bp);
+    ip->valid = 1;
+    if(ip->type == 0)
+      panic("ilock: no type");
+  }
+}
+
+// Unlock the given inode.
+void
+iunlock(struct inode *ip)
+{
+  if(ip == 0 || !holdingsleep(&ip->lock) || ip->ref < 1)
+    panic("iunlock");
+
+  releasesleep(&ip->lock);
+}
+
+// Drop a reference to an in-memory inode.
+// If that was the last reference, the inode table entry can
+// be recycled.
+void
+iput(struct inode *ip)
+{
+  acquire(&itable.lock);
+  ip->ref--;
+  release(&itable.lock);
+}
+
+// Common idiom: unlock, then put.
+void
+iunlockput(struct inode *ip)
+{
+  iunlock(ip);
+  iput(ip);
 }
 
 // Inode content
@@ -80,7 +234,7 @@ iget(uint dev, uint inum)
 // bmap should allocate one for such case, but we have not implemented
 // bwrite yet, so we just panic. We will add this support soon later.
 static uint
-bmap(struct dinode *ip, uint bn)
+bmap(struct inode *ip, uint bn)
 {
   uint addr, *a;
   struct buf *bp;
@@ -100,7 +254,7 @@ bmap(struct dinode *ip, uint bn)
       // TBD
       panic("bmap = NDIRECT: addr does not exist");
     }
-    bp = bread(ROOTDEV, addr);
+    bp = bread(ip->dev, addr);
     a = (uint*)bp->data;
     if((addr = a[bn]) == 0){
       // TBD
@@ -114,10 +268,11 @@ bmap(struct dinode *ip, uint bn)
 }
 
 // Read data from inode.
+// Caller must hold ip->lock.
 // If user_dst==1, then dst is a user virtual address;
 // otherwise, dst is a kernel address.
 int
-readi(struct dinode *ip, int user_dst, uint64 dst, uint off, uint n)
+readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)
 {
   uint tot, m;
   struct buf *bp;
@@ -131,7 +286,7 @@ readi(struct dinode *ip, int user_dst, uint64 dst, uint off, uint n)
     uint addr = bmap(ip, off/BSIZE);
     if(addr == 0)
       break;
-    bp = bread(ROOTDEV, addr);
+    bp = bread(ip->dev, addr);
     m = min(n - tot, BSIZE - off%BSIZE);
     if(either_copyout(user_dst, dst, bp->data + (off % BSIZE), m) == -1) {
       brelse(bp);
@@ -153,8 +308,8 @@ namecmp(const char *s, const char *t)
 
 // Look for a directory entry in a directory.
 // If found, set *poff to byte offset of entry.
-struct dinode*
-dirlookup(struct dinode *dp, char *name, uint *poff)
+struct inode*
+dirlookup(struct inode *dp, char *name, uint *poff)
 {
   uint off, inum;
   struct dirent de;
@@ -172,7 +327,7 @@ dirlookup(struct dinode *dp, char *name, uint *poff)
       if(poff)
         *poff = off;
       inum = de.inum;
-      return iget(ROOTDEV, inum);
+      return iget(dp->dev, inum);
     }
   }
 
@@ -186,17 +341,20 @@ dirlookup(struct dinode *dp, char *name, uint *poff)
 // default. Particularly, the "path" can be a string such as
 // "echo", but absolute paths ("/echo"), and relative paths
 // ("./echo") are not supported.
-struct dinode*
+struct inode*
 namei(char *path)
 {
-  struct dinode *ip, *next;
+  struct inode *ip, *next;
 
   ip = iget(ROOTDEV, ROOTINO);
   if (ip == 0)
     return 0;
 
+  ilock(ip);
   if((next = dirlookup(ip, path, 0)) == 0){
+    iunlockput(ip);
     return 0;
   }
+  iunlockput(ip);
   return next;
 }
