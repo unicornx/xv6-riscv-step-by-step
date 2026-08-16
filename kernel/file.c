@@ -78,3 +78,25 @@ fileclose(struct file *f)
     panic("fileclose: ff.type");
   }
 }
+
+// Read from file f.
+// addr is a user virtual address.
+int
+fileread(struct file *f, uint64 addr, int n)
+{
+  int r = 0;
+
+  if(f->readable == 0)
+    return -1;
+
+  if(f->type == FD_INODE){
+    ilock(f->ip);
+    if((r = readi(f->ip, 1, addr, f->off, n)) > 0)
+      f->off += r;
+    iunlock(f->ip);
+  } else {
+    panic("fileread");
+  }
+
+  return r;
+}

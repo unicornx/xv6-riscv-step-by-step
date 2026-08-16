@@ -1,7 +1,9 @@
 struct file {
   enum { FD_NONE, FD_INODE } type;
   int ref; // reference count
+  char readable;
   struct inode *ip;  // FD_INODE
+  uint off;          // FD_INODE
 };
 
 // in-memory copy of an inode

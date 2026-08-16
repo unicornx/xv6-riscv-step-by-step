@@ -2,12 +2,23 @@
 #include "kernel/fcntl.h"
 #include "user/user.h"
 
+char buf[512];
+
 void
 cat(int fd)
 {
-  // To be implemented when read/write are available.
-  printf("cat: opened fd = %d\n", fd);
-  printf("cat: have NOT implemented read/write yet!\n");
+  int n;
+
+  while((n = read(fd, buf, sizeof(buf))) > 0) {
+    if (write(1, buf, n) != n) {
+      fprintf(2, "cat: write error\n");
+      exit(1);
+    }
+  }
+  if(n < 0){
+    fprintf(2, "cat: read error\n");
+    exit(1);
+  }
 }
 
 int

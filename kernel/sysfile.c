@@ -59,14 +59,22 @@ fdalloc(struct file *f)
 uint64
 sys_read(void)
 {
+  struct file *f;
   int n;
   uint64 p;
+  int fd;
 
-  // ignore arg 0 (fd)
   argaddr(1, &p);
   argint(2, &n);
 
-  return consoleread(1, p, n);
+  argint(0, &fd);
+  if(fd == 0) { // console read
+    return consoleread(1, p, n);
+  }
+
+  if(argfd(0, 0, &f) < 0)
+    return -1;
+  return fileread(f, p, n);
 }
 
 uint64
@@ -125,7 +133,9 @@ sys_open(void)
   }
 
   f->type = FD_INODE;
+  f->off = 0;
   f->ip = ip;
+  f->readable = !(omode & O_WRONLY);
 
   iunlock(ip);
 
