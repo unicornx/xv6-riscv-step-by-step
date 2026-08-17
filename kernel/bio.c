@@ -7,7 +7,7 @@
 //
 // Interface:
 // * To get a buffer for a particular disk block, call bread.
-// * Have not supported bwrite to write it to disk.
+// * After changing buffer data, call bwrite to write it to disk.
 // * When done with the buffer, call brelse.
 // * Do not use the buffer after calling brelse.
 // * Only one process at a time can use a buffer,
@@ -100,6 +100,15 @@ bread(uint dev, uint blockno)
     b->valid = 1;
   }
   return b;
+}
+
+// Write b's contents to disk.  Must be locked.
+void
+bwrite(struct buf *b)
+{
+  if(!holdingsleep(&b->lock))
+    panic("bwrite");
+  virtio_disk_rw(b, 1);
 }
 
 // Release a locked buffer.

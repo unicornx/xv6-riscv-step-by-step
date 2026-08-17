@@ -2,6 +2,7 @@ struct file {
   enum { FD_NONE, FD_INODE } type;
   int ref; // reference count
   char readable;
+  char writable;
   struct inode *ip;  // FD_INODE
   uint off;          // FD_INODE
 };

@@ -125,6 +125,7 @@ UPROGS=\
 	$U/_kill\
 	$U/_sh\
 	$U/_zombie\
+	$U/_echo2file\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

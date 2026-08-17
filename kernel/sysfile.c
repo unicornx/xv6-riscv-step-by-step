@@ -80,14 +80,23 @@ sys_read(void)
 uint64
 sys_write(void)
 {
+  struct file *f;
   int n;
   uint64 p;
+  int fd;
 
-  // ignore arg 0 (fd)
   argaddr(1, &p);
   argint(2, &n);
 
-  return consolewrite(1, p, n);
+  argint(0, &fd);
+  if(fd == 1 || fd == 2) { // console write
+    return consolewrite(1, p, n);
+  }
+
+  if(argfd(0, 0, &f) < 0)
+    return -1;
+
+  return filewrite(f, p, n);
 }
 
 uint64
@@ -136,6 +145,7 @@ sys_open(void)
   f->off = 0;
   f->ip = ip;
   f->readable = !(omode & O_WRONLY);
+  f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
 
   iunlock(ip);
 
