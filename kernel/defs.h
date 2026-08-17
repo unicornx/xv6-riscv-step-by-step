@@ -42,6 +42,7 @@ int             namecmp(const char*, const char*);
 struct inode*   namei(char*);
 int             readi(struct inode*, int, uint64, uint, uint);
 int             writei(struct inode*, int, uint64, uint, uint);
+void            itrunc(struct inode*);
 
 // kalloc.c
 void*           kalloc(void);

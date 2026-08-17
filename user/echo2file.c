@@ -18,7 +18,7 @@ main(int argc, char *argv[])
     exit(1);
   }
 
-  fd = open(argv[1], O_WRONLY);
+  fd = open(argv[1], O_WRONLY|O_TRUNC);
   if(fd < 0){
     fprintf(2, "echo2file: cannot open %s\n", argv[1]);
     exit(1);
