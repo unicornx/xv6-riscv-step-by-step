@@ -10,6 +10,7 @@ int close(int);
 int kill(int);
 int exec(const char*, char**);
 int open(const char*, int);
+int mkdir(const char*);
 int getpid(void);
 char* sys_sbrk(int,int);
 int pause(int);

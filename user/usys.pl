@@ -30,6 +30,7 @@ entry("close");
 entry("kill");
 entry("exec");
 entry("open");
+entry("mkdir");
 entry("getpid");
 entry("sbrk");
 entry("pause");

@@ -123,6 +123,7 @@ UPROGS=\
 	$U/_echo\
 	$U/_init\
 	$U/_kill\
+	$U/_mkdir\
 	$U/_sh\
 	$U/_zombie\
 	$U/_echo2file\

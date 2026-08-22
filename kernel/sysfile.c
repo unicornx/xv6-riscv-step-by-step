@@ -208,6 +208,19 @@ sys_open(void)
 }
 
 uint64
+sys_mkdir(void)
+{
+  char path[MAXPATH];
+  struct inode *ip;
+
+  if(argstr(0, path, MAXPATH) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0){
+    return -1;
+  }
+  iunlockput(ip);
+  return 0;
+}
+
+uint64
 sys_exec(void)
 {
   char path[MAXPATH], *argv[MAXARG];
