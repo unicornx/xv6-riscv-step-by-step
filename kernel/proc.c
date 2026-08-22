@@ -223,6 +223,8 @@ userinit(void)
 
   p = allocproc();
   initproc = p;
+  
+  p->cwd = namei("/");
 
   p->state = RUNNABLE;
 
@@ -284,6 +286,7 @@ kfork(void)
   for(i = 0; i < NOFILE; i++)
     if(p->ofile[i])
       np->ofile[i] = filedup(p->ofile[i]);
+  np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
@@ -336,6 +339,9 @@ kexit(int status)
       p->ofile[fd] = 0;
     }
   }
+
+  iput(p->cwd);
+  p->cwd = 0;
 
   acquire(&wait_lock);
 
@@ -516,7 +522,7 @@ forkret(void)
 
     // We can invoke kexec() now that file system is initialized.
     // Put the return value (argc) of kexec into a0.
-    p->trapframe->a0 = kexec("init", (char *[]){ "init", 0 });
+    p->trapframe->a0 = kexec("/init", (char *[]){ "/init", 0 });
     if (p->trapframe->a0 == -1) {
       panic("exec");
     }

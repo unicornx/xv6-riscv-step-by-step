@@ -125,9 +125,16 @@ main(void)
       cmd++;
     if (*cmd == '\n') // is a blank command
       continue;
-    if(fork1() == 0)
-      runcmd(parsecmd(cmd));
-    wait(0);
+    if(cmd[0] == 'c' && cmd[1] == 'd' && cmd[2] == ' '){
+      // Chdir must be called by the parent, not the child.
+      cmd[strlen(cmd)-1] = 0;  // chop \n
+      if(chdir(cmd+3) < 0)
+        fprintf(2, "cannot cd %s\n", cmd+3);
+    } else {
+      if(fork1() == 0)
+        runcmd(parsecmd(cmd));
+      wait(0);
+    }
   }
   exit(0);
 }

@@ -31,6 +31,7 @@ entry("kill");
 entry("exec");
 entry("open");
 entry("mkdir");
+entry("chdir");
 entry("getpid");
 entry("sbrk");
 entry("pause");

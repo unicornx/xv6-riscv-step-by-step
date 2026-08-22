@@ -140,8 +140,21 @@ create(char *path, short type, short major, short minor)
   ilock(ip);
   ip->nlink = 1;
   iupdate(ip);
+
+  if(type == T_DIR){  // Create . and .. entries.
+    // No ip->nlink++ for ".": avoid cyclic ref count.
+    if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
+      goto fail;
+  }
+
   if(dirlink(dp, name, ip->inum) < 0)
     goto fail;
+
+  if(type == T_DIR){
+    // now that success is guaranteed:
+    dp->nlink++;  // for ".."
+    iupdate(dp);
+  }
 
   iunlockput(dp);
 
@@ -217,6 +230,27 @@ sys_mkdir(void)
     return -1;
   }
   iunlockput(ip);
+  return 0;
+}
+
+uint64
+sys_chdir(void)
+{
+  char path[MAXPATH];
+  struct inode *ip;
+  struct proc *p = myproc();
+  
+  if(argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0){
+    return -1;
+  }
+  ilock(ip);
+  if(ip->type != T_DIR){
+    iunlockput(ip);
+    return -1;
+  }
+  iunlock(ip);
+  iput(p->cwd);
+  p->cwd = ip;
   return 0;
 }
 

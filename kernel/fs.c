@@ -273,6 +273,17 @@ iget(uint dev, uint inum)
   return ip;
 }
 
+// Increment reference count for ip.
+// Returns ip to enable ip = idup(ip1) idiom.
+struct inode*
+idup(struct inode *ip)
+{
+  acquire(&itable.lock);
+  ip->ref++;
+  release(&itable.lock);
+  return ip;
+}
+
 // Lock the given inode.
 // Reads the inode from disk if necessary.
 void
@@ -553,41 +564,82 @@ dirlink(struct inode *dp, char *name, uint inum)
   return 0;
 }
 
+// Paths
+
+// Copy the next path element from path into name.
+// Return a pointer to the element following the copied one.
+// The returned path has no leading slashes,
+// so the caller can check *path=='\0' to see if the name is the last one.
+// If no name to remove, return 0.
+//
+// Examples:
+//   skipelem("a/bb/c", name) = "bb/c", setting name = "a"
+//   skipelem("///a//bb", name) = "bb", setting name = "a"
+//   skipelem("a", name) = "", setting name = "a"
+//   skipelem("", name) = skipelem("////", name) = 0
+//
+static char*
+skipelem(char *path, char *name)
+{
+  char *s;
+  int len;
+
+  while(*path == '/')
+    path++;
+  if(*path == 0)
+    return 0;
+  s = path;
+  while(*path != '/' && *path != 0)
+    path++;
+  len = path - s;
+  if(len >= DIRSIZ)
+    memmove(name, s, DIRSIZ);
+  else {
+    memmove(name, s, len);
+    name[len] = 0;
+  }
+  while(*path == '/')
+    path++;
+  return path;
+}
+
 // Look up and return the inode for a path name.
 // If parent != 0, return the inode for the parent and copy the final
 // path element into name, which must have room for DIRSIZ bytes.
 // Must be called inside a transaction since it calls iput().
-// Currently, file path resolution is not supported, so the
-// "path" parameter can only contain the name of the program
-// file, and the program is placed in the root directory by
-// default. Particularly, the "path" can be a string such as
-// "echo", but absolute paths ("/echo"), and relative paths
-// ("./echo") are not supported.
 static struct inode*
 namex(char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
 
-  ip = iget(ROOTDEV, ROOTINO);
+  if(*path == '/')
+    ip = iget(ROOTDEV, ROOTINO);
+  else
+    ip = idup(myproc()->cwd);
 
-  if(nameiparent){
-    int len = strlen(path);
-    if(len >= DIRSIZ)
-      memmove(name, path, DIRSIZ);
-    else {
-      memmove(name, path, len);
-      name[len] = 0;
+  while((path = skipelem(path, name)) != 0){
+    ilock(ip);
+    if(ip->type != T_DIR){
+      iunlockput(ip);
+      return 0;
     }
-    return ip;
-  }
-
-  ilock(ip);
-  if((next = dirlookup(ip, path, 0)) == 0){
+    if(nameiparent && *path == '\0'){
+      // Stop one level early.
+      iunlock(ip);
+      return ip;
+    }
+    if((next = dirlookup(ip, name, 0)) == 0){
+      iunlockput(ip);
+      return 0;
+    }
     iunlockput(ip);
+    ip = next;
+  }
+  if(nameiparent){
+    iput(ip);
     return 0;
   }
-  iunlockput(ip);
-  return next;
+  return ip;
 }
 
 struct inode*
