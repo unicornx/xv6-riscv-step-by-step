@@ -10,7 +10,6 @@ bootblock
 entryother
 kernelmemfs
 mkfs
-dumpfs
 kernel/kernel
 user/usys.S
 .gdbinit

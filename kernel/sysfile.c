@@ -112,6 +112,18 @@ sys_close(void)
   return 0;
 }
 
+uint64
+sys_fstat(void)
+{
+  struct file *f;
+  uint64 st; // user pointer to struct stat
+
+  argaddr(1, &st);
+  if(argfd(0, 0, &f) < 0)
+    return -1;
+  return filestat(f, st);
+}
+
 static struct inode*
 create(char *path, short type, short major, short minor)
 {

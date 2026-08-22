@@ -110,7 +110,6 @@ $U/usys.o : $U/usys.S
 
 mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 	gcc -Wno-unknown-attributes -I. -o mkfs/mkfs mkfs/mkfs.c
-	gcc -Wno-unknown-attributes -I. -o mkfs/dumpfs mkfs/dumpfs.c
 
 # Prevent deletion of intermediate files, e.g. cat.o, after first build, so
 # that disk image changes after first build are persistent until clean.  More
@@ -123,6 +122,7 @@ UPROGS=\
 	$U/_echo\
 	$U/_init\
 	$U/_kill\
+	$U/_ls\
 	$U/_mkdir\
 	$U/_sh\
 	$U/_zombie\
@@ -137,7 +137,7 @@ clean:
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
 	$K/kernel fs.img \
-	mkfs/mkfs mkfs/dumpfs .gdbinit \
+	mkfs/mkfs .gdbinit \
 	$U/usys.S \
 	$(UPROGS)
 

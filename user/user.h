@@ -1,5 +1,7 @@
 #define SBRK_ERROR ((char *)-1)
 
+struct stat;
+
 // system calls
 int fork(void);
 int exit(int) __attribute__((noreturn));
@@ -10,6 +12,7 @@ int close(int);
 int kill(int);
 int exec(const char*, char**);
 int open(const char*, int);
+int fstat(int fd, struct stat*);
 int mkdir(const char*);
 int chdir(const char*);
 int getpid(void);
@@ -18,6 +21,7 @@ int pause(int);
 int uptime(void);
 
 // ulib.c
+int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);
 void *memmove(void*, const void*, int);
 char* strchr(const char*, char c);

@@ -30,6 +30,7 @@ entry("close");
 entry("kill");
 entry("exec");
 entry("open");
+entry("fstat");
 entry("mkdir");
 entry("chdir");
 entry("getpid");

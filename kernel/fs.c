@@ -423,6 +423,18 @@ itrunc(struct inode *ip)
   iupdate(ip);
 }
 
+// Copy stat information from inode.
+// Caller must hold ip->lock.
+void
+stati(struct inode *ip, struct stat *st)
+{
+  st->dev = ip->dev;
+  st->ino = ip->inum;
+  st->type = ip->type;
+  st->nlink = ip->nlink;
+  st->size = ip->size;
+}
+
 // Read data from inode.
 // Caller must hold ip->lock.
 // If user_dst==1, then dst is a user virtual address;
