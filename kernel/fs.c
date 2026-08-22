@@ -188,6 +188,35 @@ iinit()
   }
 }
 
+static struct inode* iget(uint dev, uint inum);
+
+// Allocate an inode on device dev.
+// Mark it as allocated by  giving it type type.
+// Returns an unlocked but allocated and referenced inode,
+// or NULL if there is no free inode.
+struct inode*
+ialloc(uint dev, short type)
+{
+  int inum;
+  struct buf *bp;
+  struct dinode *dip;
+
+  for(inum = 1; inum < sb.ninodes; inum++){
+    bp = bread(dev, IBLOCK(inum, sb));
+    dip = (struct dinode*)bp->data + inum%IPB;
+    if(dip->type == 0){  // a free inode
+      memset(dip, 0, sizeof(*dip));
+      dip->type = type;
+      bwrite(bp);   // mark it allocated on the disk
+      brelse(bp);
+      return iget(dev, inum);
+    }
+    brelse(bp);
+  }
+  printf("ialloc: no inodes\n");
+  return 0;
+}
+
 // Copy a modified in-memory inode to disk.
 // Must be called after every change to an ip->xxx field
 // that lives on disk.
@@ -493,21 +522,64 @@ dirlookup(struct inode *dp, char *name, uint *poff)
   return 0;
 }
 
+// Write a new directory entry (name, inum) into the directory dp.
+// Returns 0 on success, -1 on failure (e.g. out of disk blocks).
+int
+dirlink(struct inode *dp, char *name, uint inum)
+{
+  int off;
+  struct dirent de;
+  struct inode *ip;
+
+  // Check that name is not present.
+  if((ip = dirlookup(dp, name, 0)) != 0){
+    iput(ip);
+    return -1;
+  }
+
+  // Look for an empty dirent.
+  for(off = 0; off < dp->size; off += sizeof(de)){
+    if(readi(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+      panic("dirlink read");
+    if(de.inum == 0)
+      break;
+  }
+
+  strncpy(de.name, name, DIRSIZ);
+  de.inum = inum;
+  if(writei(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+    return -1;
+
+  return 0;
+}
+
 // Look up and return the inode for a path name.
+// If parent != 0, return the inode for the parent and copy the final
+// path element into name, which must have room for DIRSIZ bytes.
+// Must be called inside a transaction since it calls iput().
 // Currently, file path resolution is not supported, so the
 // "path" parameter can only contain the name of the program
 // file, and the program is placed in the root directory by
 // default. Particularly, the "path" can be a string such as
 // "echo", but absolute paths ("/echo"), and relative paths
 // ("./echo") are not supported.
-struct inode*
-namei(char *path)
+static struct inode*
+namex(char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
 
   ip = iget(ROOTDEV, ROOTINO);
-  if (ip == 0)
-    return 0;
+
+  if(nameiparent){
+    int len = strlen(path);
+    if(len >= DIRSIZ)
+      memmove(name, path, DIRSIZ);
+    else {
+      memmove(name, path, len);
+      name[len] = 0;
+    }
+    return ip;
+  }
 
   ilock(ip);
   if((next = dirlookup(ip, path, 0)) == 0){
@@ -516,4 +588,17 @@ namei(char *path)
   }
   iunlockput(ip);
   return next;
+}
+
+struct inode*
+namei(char *path)
+{
+  char name[DIRSIZ];
+  return namex(path, 0, name);
+}
+
+struct inode*
+nameiparent(char *path, char *name)
+{
+  return namex(path, 1, name);
 }
