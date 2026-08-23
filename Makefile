@@ -129,6 +129,8 @@ UPROGS=\
 	$U/_sh\
 	$U/_zombie\
 	$U/_echo2file\
+	$U/_forphan\
+	$U/_dorphan\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

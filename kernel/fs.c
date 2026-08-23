@@ -43,6 +43,7 @@ fsinit(int dev) {
   readsb(dev, &sb);
   if(sb.magic != FSMAGIC)
     panic("invalid file system");
+  ireclaim(dev);
 }
 
 // Zero a block.
@@ -360,6 +361,26 @@ iunlockput(struct inode *ip)
 {
   iunlock(ip);
   iput(ip);
+}
+
+void
+ireclaim(int dev)
+{
+  for (int inum = 1; inum < sb.ninodes; inum++) {
+    struct inode *ip = 0;
+    struct buf *bp = bread(dev, IBLOCK(inum, sb));
+    struct dinode *dip = (struct dinode *)bp->data + inum % IPB;
+    if (dip->type != 0 && dip->nlink == 0) {  // is an orphaned inode
+      printf("ireclaim: orphaned inode %d\n", inum);
+      ip = iget(dev, inum);
+    }
+    brelse(bp);
+    if (ip) {
+      ilock(ip);
+      iunlock(ip);
+      iput(ip);
+    }
+  }
 }
 
 // Inode content
