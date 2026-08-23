@@ -61,6 +61,7 @@ runcmd(struct cmd *cmd)
   struct backcmd *bcmd;
   struct execcmd *ecmd;
   struct listcmd *lcmd;
+  struct redircmd *rcmd;
 
   if(cmd == 0)
     exit(1);
@@ -78,7 +79,13 @@ runcmd(struct cmd *cmd)
     break;
 
   case REDIR:
-    fprintf(2, "redir not implemented\n");
+    rcmd = (struct redircmd*)cmd;
+    close(rcmd->fd);
+    if(open(rcmd->file, rcmd->mode) < 0){
+      fprintf(2, "open %s failed\n", rcmd->file);
+      exit(1);
+    }
+    runcmd(rcmd->cmd);
     break;
 
   case LIST:
@@ -360,13 +367,13 @@ parseredirs(struct cmd *cmd, char **ps, char *es)
       panic("missing file for redirection");
     switch(tok){
     case '<':
-      cmd = redircmd(cmd, q, eq, 0, 0);
+      cmd = redircmd(cmd, q, eq, O_RDONLY, 0);
       break;
     case '>':
-      cmd = redircmd(cmd, q, eq, 0, 0);
+      cmd = redircmd(cmd, q, eq, O_WRONLY|O_CREATE|O_TRUNC, 1);
       break;
     case '+':  // >>
-      cmd = redircmd(cmd, q, eq, 0, 0);
+      cmd = redircmd(cmd, q, eq, O_WRONLY|O_CREATE, 1);
       break;
     }
   }
