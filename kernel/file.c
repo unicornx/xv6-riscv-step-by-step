@@ -13,6 +13,7 @@
 #include "stat.h"
 #include "proc.h"
 
+struct devsw devsw[NDEV];
 struct {
   struct spinlock lock;
   struct file file[NFILE];
@@ -72,7 +73,7 @@ fileclose(struct file *f)
   f->type = FD_NONE;
   release(&ftable.lock);
 
-  if(ff.type == FD_INODE){
+  if(ff.type == FD_INODE || ff.type == FD_DEVICE){
     iput(ff.ip);
   } else {
     panic("fileclose: ff.type");
@@ -87,7 +88,7 @@ filestat(struct file *f, uint64 addr)
   struct proc *p = myproc();
   struct stat st;
   
-  if(f->type == FD_INODE){
+  if(f->type == FD_INODE || f->type == FD_DEVICE){
     ilock(f->ip);
     stati(f->ip, &st);
     iunlock(f->ip);
@@ -108,7 +109,11 @@ fileread(struct file *f, uint64 addr, int n)
   if(f->readable == 0)
     return -1;
 
-  if(f->type == FD_INODE){
+  if(f->type == FD_DEVICE){
+    if(f->major < 0 || f->major >= NDEV || !devsw[f->major].read)
+      return -1;
+    r = devsw[f->major].read(1, addr, n);
+  } else if(f->type == FD_INODE){
     ilock(f->ip);
     if((r = readi(f->ip, 1, addr, f->off, n)) > 0)
       f->off += r;
@@ -130,7 +135,11 @@ filewrite(struct file *f, uint64 addr, int n)
   if(f->writable == 0)
     return -1;
 
-  if(f->type == FD_INODE){
+  if(f->type == FD_DEVICE){
+    if(f->major < 0 || f->major >= NDEV || !devsw[f->major].write)
+      return -1;
+    ret = devsw[f->major].write(1, addr, n);
+  } else if(f->type == FD_INODE){
     // write a few blocks at a time to avoid exceeding
     // the maximum log transaction size, including
     // i-node, indirect block, allocation blocks,

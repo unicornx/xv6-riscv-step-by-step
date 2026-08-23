@@ -16,9 +16,6 @@
 #include "file.h"
 #include "fcntl.h"
 
-extern int consoleread(int user_dst, uint64 dst, int n);
-extern int consolewrite(int user_src, uint64 src, int n);
-
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
 static int
@@ -45,9 +42,7 @@ fdalloc(struct file *f)
   int fd;
   struct proc *p = myproc();
 
-  // Reserved file descriptors 0, 1, and 2 for console.
-  // We will implement console read/write later.
-  for(fd = 3; fd < NOFILE; fd++){
+  for(fd = 0; fd < NOFILE; fd++){
     if(p->ofile[fd] == 0){
       p->ofile[fd] = f;
       return fd;
@@ -57,21 +52,28 @@ fdalloc(struct file *f)
 }
 
 uint64
+sys_dup(void)
+{
+  struct file *f;
+  int fd;
+
+  if(argfd(0, 0, &f) < 0)
+    return -1;
+  if((fd=fdalloc(f)) < 0)
+    return -1;
+  filedup(f);
+  return fd;
+}
+
+uint64
 sys_read(void)
 {
   struct file *f;
   int n;
   uint64 p;
-  int fd;
 
   argaddr(1, &p);
   argint(2, &n);
-
-  argint(0, &fd);
-  if(fd == 0) { // console read
-    return consoleread(1, p, n);
-  }
-
   if(argfd(0, 0, &f) < 0)
     return -1;
   return fileread(f, p, n);
@@ -83,16 +85,9 @@ sys_write(void)
   struct file *f;
   int n;
   uint64 p;
-  int fd;
-
+  
   argaddr(1, &p);
   argint(2, &n);
-
-  argint(0, &fd);
-  if(fd == 1 || fd == 2) { // console write
-    return consolewrite(1, p, n);
-  }
-
   if(argfd(0, 0, &f) < 0)
     return -1;
 
@@ -250,7 +245,7 @@ create(char *path, short type, short major, short minor)
   if((ip = dirlookup(dp, name, 0)) != 0){
     iunlockput(dp);
     ilock(ip);
-    if(type == T_FILE && ip->type == T_FILE)
+    if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
       return ip;
     iunlockput(ip);
     return 0;
@@ -262,6 +257,8 @@ create(char *path, short type, short major, short minor)
   }
 
   ilock(ip);
+  ip->major = major;
+  ip->minor = minor;
   ip->nlink = 1;
   iupdate(ip);
 
@@ -322,6 +319,11 @@ sys_open(void)
     }
   }
 
+  if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
+    iunlockput(ip);
+    return -1;
+  }
+
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
       fileclose(f);
@@ -329,8 +331,13 @@ sys_open(void)
     return -1;
   }
 
-  f->type = FD_INODE;
-  f->off = 0;
+  if(ip->type == T_DEVICE){
+    f->type = FD_DEVICE;
+    f->major = ip->major;
+  } else {
+    f->type = FD_INODE;
+    f->off = 0;
+  }
   f->ip = ip;
   f->readable = !(omode & O_WRONLY);
   f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
@@ -351,6 +358,23 @@ sys_mkdir(void)
   struct inode *ip;
 
   if(argstr(0, path, MAXPATH) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0){
+    return -1;
+  }
+  iunlockput(ip);
+  return 0;
+}
+
+uint64
+sys_mknod(void)
+{
+  struct inode *ip;
+  char path[MAXPATH];
+  int major, minor;
+
+  argint(1, &major);
+  argint(2, &minor);
+  if((argstr(0, path, MAXPATH)) < 0 ||
+     (ip = create(path, T_DEVICE, major, minor)) == 0){
     return -1;
   }
   iunlockput(ip);
