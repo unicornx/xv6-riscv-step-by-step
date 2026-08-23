@@ -324,10 +324,32 @@ iunlock(struct inode *ip)
 // Drop a reference to an in-memory inode.
 // If that was the last reference, the inode table entry can
 // be recycled.
+// If that was the last reference and the inode has no links
+// to it, free the inode (and its content) on disk.
 void
 iput(struct inode *ip)
 {
   acquire(&itable.lock);
+
+  if(ip->ref == 1 && ip->valid && ip->nlink == 0){
+    // inode has no links and no other references: truncate and free.
+
+    // ip->ref == 1 means no other process can have ip locked,
+    // so this acquiresleep() won't block (or deadlock).
+    acquiresleep(&ip->lock);
+
+    release(&itable.lock);
+
+    itrunc(ip);
+    ip->type = 0;
+    iupdate(ip);
+    ip->valid = 0;
+
+    releasesleep(&ip->lock);
+
+    acquire(&itable.lock);
+  }
+
   ip->ref--;
   release(&itable.lock);
 }
