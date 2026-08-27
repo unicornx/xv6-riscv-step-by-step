@@ -22,6 +22,7 @@ OBJS = \
   $K/fs.o \
   $K/sleeplock.o \
   $K/file.o \
+  $K/pipe.o \
   $K/exec.o \
   $K/sysfile.o \
   $K/kernelvec.o \
@@ -120,6 +121,7 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 UPROGS=\
 	$U/_cat\
 	$U/_echo\
+	$U/_grep\
 	$U/_init\
 	$U/_kill\
 	$U/_ln\
