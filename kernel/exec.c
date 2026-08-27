@@ -35,8 +35,11 @@ kexec(char *path, char **argv)
   pagetable_t pagetable = 0, oldpagetable;
   struct proc *p = myproc();
 
+  begin_op();
+
   // Open the executable file.
   if((ip = namei(path)) == 0){
+    end_op();
     return -1;
   }
   ilock(ip);
@@ -72,6 +75,7 @@ kexec(char *path, char **argv)
       goto bad;
   }
   iunlockput(ip);
+  end_op();
   ip = 0;
 
   p = myproc();
@@ -138,6 +142,7 @@ kexec(char *path, char **argv)
     proc_freepagetable(pagetable, sz);
   if(ip){
     iunlockput(ip);
+    end_op();
   }
   return -1;
 }

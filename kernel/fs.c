@@ -43,6 +43,7 @@ fsinit(int dev) {
   readsb(dev, &sb);
   if(sb.magic != FSMAGIC)
     panic("invalid file system");
+  initlog(dev, &sb);
   ireclaim(dev);
 }
 
@@ -54,7 +55,7 @@ bzero(int dev, int bno)
 
   bp = bread(dev, bno);
   memset(bp->data, 0, BSIZE);
-  bwrite(bp);
+  log_write(bp);
   brelse(bp);
 }
 
@@ -75,7 +76,7 @@ balloc(uint dev)
       m = 1 << (bi % 8);
       if((bp->data[bi/8] & m) == 0){  // Is block free?
         bp->data[bi/8] |= m;  // Mark block in use.
-        bwrite(bp);
+        log_write(bp);
         brelse(bp);
         bzero(dev, b + bi);
         return b + bi;
@@ -100,7 +101,7 @@ bfree(int dev, uint b)
   if((bp->data[bi/8] & m) == 0)
     panic("freeing free block");
   bp->data[bi/8] &= ~m;
-  bwrite(bp);
+  log_write(bp);
   brelse(bp);
 }
 
@@ -208,7 +209,7 @@ ialloc(uint dev, short type)
     if(dip->type == 0){  // a free inode
       memset(dip, 0, sizeof(*dip));
       dip->type = type;
-      bwrite(bp);   // mark it allocated on the disk
+      log_write(bp);   // mark it allocated on the disk
       brelse(bp);
       return iget(dev, inum);
     }
@@ -236,7 +237,7 @@ iupdate(struct inode *ip)
   dip->nlink = ip->nlink;
   dip->size = ip->size;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
-  bwrite(bp);
+  log_write(bp);
   brelse(bp);
 }
 
@@ -331,6 +332,8 @@ iunlock(struct inode *ip)
 // be recycled.
 // If that was the last reference and the inode has no links
 // to it, free the inode (and its content) on disk.
+// All calls to iput() must be inside a transaction in
+// case it has to free the inode.
 void
 iput(struct inode *ip)
 {
@@ -380,9 +383,11 @@ ireclaim(int dev)
     }
     brelse(bp);
     if (ip) {
+      begin_op();
       ilock(ip);
       iunlock(ip);
       iput(ip);
+      end_op();
     }
   }
 }
@@ -428,7 +433,7 @@ bmap(struct inode *ip, uint bn)
       addr = balloc(ip->dev);
       if(addr){
         a[bn] = addr;
-        bwrite(bp);
+        log_write(bp);
       }
     }
     brelse(bp);
@@ -541,7 +546,7 @@ writei(struct inode *ip, int user_src, uint64 src, uint off, uint n)
       brelse(bp);
       break;
     }
-    bwrite(bp);
+    log_write(bp);
     brelse(bp);
   }
 
